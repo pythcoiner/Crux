@@ -52,4 +52,6 @@ bool ss_keypath_parse(const unsigned char *keypath_after_fp,
 
 bool ss_keypath_format(const ss_keypath_t *kp, char *buf, size_t buf_size);
 
+bool ss_keypath_is_whitelisted(const ss_keypath_t *kp, bool is_testnet);
+
 #endif // SS_WHITELIST_H

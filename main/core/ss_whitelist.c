@@ -44,3 +44,24 @@ bool ss_keypath_format(const ss_keypath_t *kp, char *buf, size_t buf_size) {
                    kp->chain, kp->index);
   return n >= 0 && (size_t)n < buf_size;
 }
+
+bool ss_keypath_is_whitelisted(const ss_keypath_t *kp, bool is_testnet) {
+  if (kp->purpose != 44 && kp->purpose != 49 &&
+      kp->purpose != 84 && kp->purpose != 86)
+    return false;
+
+  uint32_t expected_coin = is_testnet ? 1u : 0u;
+  if (kp->coin != expected_coin)
+    return false;
+
+  if (kp->account >= SS_MAX_ACCOUNT)
+    return false;
+
+  if (kp->chain > 1)
+    return false;
+
+  if (kp->index >= SS_MAX_ADDR_INDEX)
+    return false;
+
+  return true;
+}

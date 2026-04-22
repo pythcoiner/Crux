@@ -45,9 +45,12 @@ TARGET_DERIV = test_derivation_path
 SRCS_SS_PARSE = test_ss_whitelist_parse.c
 TARGET_SS_PARSE = test_ss_whitelist_parse
 
+SRCS_SS_WHITELISTED = test_ss_whitelist_is_whitelisted.c
+TARGET_SS_WHITELISTED = test_ss_whitelist_is_whitelisted
+
 SS_SRC = ../ss_whitelist.c ../ss_whitelist.h
 
-all: $(TARGET_DERIV) $(TARGET_SS_PARSE)
+all: $(TARGET_DERIV) $(TARGET_SS_PARSE) $(TARGET_SS_WHITELISTED)
 
 $(LIBWALLY): $(WALLY_SRC)
 	$(CC) $(CFLAGS) $(WALLY_CFLAGS) -c -o combined.o $<
@@ -61,11 +64,15 @@ $(TARGET_DERIV): $(SRCS_DERIV) $(KEY_SRC) $(LIBWALLY)
 $(TARGET_SS_PARSE): $(SRCS_SS_PARSE) $(SS_SRC)
 	$(CC) $(CFLAGS) $(TEST_INCS) -o $@ $(SRCS_SS_PARSE)
 
-run: $(TARGET_DERIV) $(TARGET_SS_PARSE)
+$(TARGET_SS_WHITELISTED): $(SRCS_SS_WHITELISTED) $(SS_SRC)
+	$(CC) $(CFLAGS) $(TEST_INCS) -o $@ $(SRCS_SS_WHITELISTED)
+
+run: $(TARGET_DERIV) $(TARGET_SS_PARSE) $(TARGET_SS_WHITELISTED)
 	./$(TARGET_DERIV)
 	./$(TARGET_SS_PARSE)
+	./$(TARGET_SS_WHITELISTED)
 
 clean:
-	rm -f $(TARGET_DERIV) $(TARGET_SS_PARSE) $(LIBWALLY) combined.o
+	rm -f $(TARGET_DERIV) $(TARGET_SS_PARSE) $(TARGET_SS_WHITELISTED) $(LIBWALLY) combined.o
 
 .PHONY: all run clean
