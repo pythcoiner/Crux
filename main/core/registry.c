@@ -82,6 +82,49 @@ void registry_clear(void) {
   registry_len = 0;
 }
 
+static void registry_init_scan(storage_location_t loc) {
+  char **files = NULL;
+  int count = 0;
+  if (storage_list_descriptors(loc, &files, &count) != ESP_OK) {
+    return;
+  }
+  for (int i = 0; i < count; i++) {
+    const char *fname = files[i];
+    size_t flen = strlen(fname);
+    if (flen < 4 || strcmp(fname + flen - 4, ".txt") != 0) {
+      continue;
+    }
+    uint8_t *data = NULL;
+    size_t data_len = 0;
+    bool encrypted = false;
+    if (storage_load_descriptor(loc, fname, &data, &data_len, &encrypted) != ESP_OK) {
+      continue;
+    }
+    char *desc_str = malloc(data_len + 1);
+    if (desc_str) {
+      memcpy(desc_str, data, data_len);
+      desc_str[data_len] = '\0';
+      char id[REGISTRY_ID_MAX_LEN];
+      size_t id_len = flen - 4;
+      if (id_len >= REGISTRY_ID_MAX_LEN) id_len = REGISTRY_ID_MAX_LEN - 1;
+      memcpy(id, fname, id_len);
+      id[id_len] = '\0';
+      registry_add_from_string(id, desc_str, loc, false);
+      free(desc_str);
+    }
+    free(data);
+  }
+  storage_free_file_list(files, count);
+}
+
+void registry_init(bool is_testnet) {
+  (void)is_testnet;
+  registry_clear();
+  registry_init_scan(STORAGE_FLASH);
+  registry_init_scan(STORAGE_SD);
+  ESP_LOGI(TAG, "Registry: %zu entries loaded", registry_len);
+}
+
 registry_entry_t *registry_match_keypath(const uint8_t *keypath,
                                           size_t keypath_len,
                                           size_t *cursor) {
