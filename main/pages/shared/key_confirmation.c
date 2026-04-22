@@ -1,6 +1,7 @@
 #include "key_confirmation.h"
 #include "../../core/key.h"
 #include "../../core/settings.h"
+#include "../../core/registry.h"
 #include "../../core/wallet.h"
 #include "../../qr/encoder.h"
 #include "../../ui/assets/icons_36.h"
@@ -38,6 +39,7 @@ static void loading_timer_cb(lv_timer_t *timer) {
       dialog_show_error("Failed to initialize wallet", return_callback, 0);
       return;
     }
+    registry_init(net == WALLET_NETWORK_TESTNET);
     if (success_callback)
       success_callback();
   } else {
