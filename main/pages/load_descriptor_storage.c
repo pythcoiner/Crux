@@ -140,6 +140,32 @@ static void load_selected(int idx, const char *filename) {
     descriptor_str[data_len] = '\0';
     free(data);
 
+    /* Paranoia: ensure registry has this descriptor even if registry_init missed it */
+    {
+      const char *id_start = filename;
+      size_t prefix_len = strlen(STORAGE_DESCRIPTOR_PREFIX);
+      if (strncmp(id_start, STORAGE_DESCRIPTOR_PREFIX, prefix_len) == 0)
+        id_start += prefix_len;
+
+      size_t slen = strlen(id_start);
+      size_t ext_len = strlen(STORAGE_DESCRIPTOR_EXT_TXT);
+      size_t id_len = (slen > ext_len &&
+                       strcmp(id_start + slen - ext_len, STORAGE_DESCRIPTOR_EXT_TXT) == 0)
+                          ? slen - ext_len
+                          : slen;
+      if (id_len > REGISTRY_ID_MAX_LEN - 1)
+        id_len = REGISTRY_ID_MAX_LEN - 1;
+
+      char id[REGISTRY_ID_MAX_LEN];
+      memcpy(id, id_start, id_len);
+      id[id_len] = '\0';
+
+      if (!registry_find_by_id(id))
+        if (!registry_add_from_string(id, descriptor_str,
+                                      storage_browser_get_location(), /*persist=*/false))
+          ESP_LOGW(TAG, "registry_add_from_string failed for '%s'", id);
+    }
+
     storage_browser_hide();
     descriptor_loader_process_string(descriptor_str, descriptor_validation_cb,
                                      NULL);
