@@ -96,9 +96,17 @@ bool psbt_get_output_derivation(const struct wally_psbt *psbt,
                                 size_t output_index, bool is_testnet,
                                 bool *is_change, uint32_t *address_index);
 
-// Sign PSBT inputs with loaded key
-// Returns number of signatures added (0 if none)
-size_t psbt_sign(struct wally_psbt *psbt, bool is_testnet);
+// Callback for permissive-signing ACK (settings_get_permissive_signing() path).
+// Called when an input carries our fingerprint but no verifiable claim.
+// Return true to allow signing with the raw keypath; false to skip.
+typedef bool (*psbt_sign_ack_fn_t)(size_t input_i,
+                                   const uint8_t *raw_keypath,
+                                   size_t raw_keypath_len);
+
+// Sign PSBT inputs with loaded key.
+// Returns number of signatures added (0 if none).
+// ack_fn: callback for requires_ack inputs; NULL treats them as denied.
+size_t psbt_sign(struct wally_psbt *psbt, bool is_testnet, psbt_sign_ack_fn_t ack_fn);
 
 // Create a trimmed PSBT containing only signatures and minimal validation data
 // Returns new PSBT on success (caller must free), NULL on failure

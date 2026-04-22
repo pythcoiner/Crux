@@ -610,15 +610,26 @@ bool psbt_get_output_derivation(const struct wally_psbt *psbt,
   return false;
 }
 
-size_t psbt_sign(struct wally_psbt *psbt, bool is_testnet) {
+/* Format a BIP32 path from uint32 components (hardened = high bit set) into
+ * the "m/44'/0'/0'/0/5" form consumed by key_get_derived_key(). */
+static bool format_derived_path(const uint32_t *comps, size_t n,
+                                 char *buf, size_t buf_size) {
+  int w = snprintf(buf, buf_size, "m");
+  if (w < 0 || (size_t)w >= buf_size) return false;
+  size_t pos = (size_t)w;
+  for (size_t k = 0; k < n; k++) {
+    int written = ss_is_hardened(comps[k])
+        ? snprintf(buf + pos, buf_size - pos, "/%u'", ss_unharden(comps[k]))
+        : snprintf(buf + pos, buf_size - pos, "/%u", comps[k]);
+    if (written < 0 || pos + (size_t)written >= buf_size) return false;
+    pos += (size_t)written;
+  }
+  return true;
+}
+
+size_t psbt_sign(struct wally_psbt *psbt, bool is_testnet, psbt_sign_ack_fn_t ack_fn) {
   if (!psbt) {
     ESP_LOGE(TAG, "Invalid PSBT");
-    return 0;
-  }
-
-  unsigned char our_fingerprint[BIP32_KEY_FINGERPRINT_LEN];
-  if (!key_get_fingerprint(our_fingerprint)) {
-    ESP_LOGE(TAG, "Failed to get key fingerprint");
     return 0;
   }
 
@@ -631,80 +642,56 @@ size_t psbt_sign(struct wally_psbt *psbt, bool is_testnet) {
   size_t signatures_added = 0;
 
   for (size_t i = 0; i < num_inputs; i++) {
-    size_t keypaths_size = 0;
-    if (wally_psbt_get_input_keypaths_size(psbt, i, &keypaths_size) !=
-            WALLY_OK ||
-        keypaths_size == 0) {
+    input_ownership_t ownership = psbt_classify_input(psbt, i, is_testnet);
+
+    if (!ownership.owned) continue;
+
+    char path[128];
+    bool have_path = false;
+
+    if (ownership.verified) {
+      /* Both CLAIM_WHITELIST and CLAIM_REGISTRY populate derived_path with
+       * the raw BIP32 uint32 components; format directly into a path string. */
+      have_path = format_derived_path(ownership.claim.derived_path,
+                                       ownership.claim.derived_path_len,
+                                       path, sizeof(path));
+    } else {
+      /* requires_ack: permissive-signing fallback — fp matched but no verified claim. */
+      if (!ack_fn) continue;
+      if (!ack_fn(i, ownership.raw_keypath, ownership.raw_keypath_len)) continue;
+
+      /* Parse raw_keypath bytes (fp + BIP32 components) into uint32 array. */
+      if (ownership.raw_keypath_len < BIP32_KEY_FINGERPRINT_LEN ||
+          (ownership.raw_keypath_len - BIP32_KEY_FINGERPRINT_LEN) % 4 != 0)
+        continue;
+      size_t n_comps = (ownership.raw_keypath_len - BIP32_KEY_FINGERPRINT_LEN) / 4;
+      if (n_comps > MAX_KEYPATH_TOTAL_DEPTH) continue;
+      uint32_t raw_comps[MAX_KEYPATH_TOTAL_DEPTH];
+      for (size_t k = 0; k < n_comps; k++)
+        raw_comps[k] = ss_u32_le(ownership.raw_keypath
+                                  + BIP32_KEY_FINGERPRINT_LEN + k * 4);
+      have_path = format_derived_path(raw_comps, n_comps, path, sizeof(path));
+    }
+
+    if (!have_path) {
+      ESP_LOGE(TAG, "Failed to format signing path for input %zu", i);
       continue;
     }
 
-    for (size_t j = 0; j < keypaths_size; j++) {
-      unsigned char keypath[100];
-      size_t keypath_len = 0;
+    struct ext_key *derived_key = NULL;
+    if (!key_get_derived_key(path, &derived_key)) {
+      ESP_LOGE(TAG, "Failed to derive key for path: %s", path);
+      continue;
+    }
 
-      if (wally_psbt_get_input_keypath(psbt, i, j, keypath, sizeof(keypath),
-                                       &keypath_len) != WALLY_OK) {
-        continue;
-      }
+    int ret = wally_psbt_sign(psbt, derived_key->priv_key + 1,
+                              EC_PRIVATE_KEY_LEN, EC_FLAG_GRIND_R);
+    bip32_key_free(derived_key);
 
-      if (memcmp(keypath, our_fingerprint, BIP32_KEY_FINGERPRINT_LEN) != 0) {
-        continue;
-      }
-
-      uint32_t purpose, coin_type, account;
-      memcpy(&purpose, keypath + 4, sizeof(uint32_t));
-      memcpy(&coin_type, keypath + 8, sizeof(uint32_t));
-      memcpy(&account, keypath + 12, sizeof(uint32_t));
-
-      uint32_t expected_account = 0x80000000 | wallet_get_account();
-      uint32_t coin_value = coin_type & 0x7FFFFFFF;
-      uint32_t purpose_value = purpose & 0x7FFFFFFF;
-
-      char path_str[64];
-
-      // BIP84 single-sig: m/84'/coin'/account'/change/index (24 bytes keypath)
-      // BIP48 multisig: m/48'/coin'/account'/script_type'/change/index (28
-      // bytes keypath)
-      if (purpose_value == 84 && keypath_len >= 24 &&
-          account == expected_account) {
-        uint32_t change_val, index_val;
-        memcpy(&change_val, keypath + 16, sizeof(uint32_t));
-        memcpy(&index_val, keypath + 20, sizeof(uint32_t));
-
-        snprintf(path_str, sizeof(path_str), "m/84'/%u'/%u'/%u/%u", coin_value,
-                 wallet_get_account(), change_val, index_val);
-      } else if (purpose_value == 48 && keypath_len >= 28 &&
-                 account == expected_account) {
-        uint32_t script_type, change_val, index_val;
-        memcpy(&script_type, keypath + 16, sizeof(uint32_t));
-        memcpy(&change_val, keypath + 20, sizeof(uint32_t));
-        memcpy(&index_val, keypath + 24, sizeof(uint32_t));
-
-        uint32_t script_type_value = script_type & 0x7FFFFFFF;
-        snprintf(path_str, sizeof(path_str), "m/48'/%u'/%u'/%u'/%u/%u",
-                 coin_value, wallet_get_account(), script_type_value,
-                 change_val, index_val);
-      } else {
-        continue;
-      }
-
-      struct ext_key *derived_key = NULL;
-      if (!key_get_derived_key(path_str, &derived_key)) {
-        ESP_LOGE(TAG, "Failed to derive key for path: %s", path_str);
-        continue;
-      }
-
-      int ret = wally_psbt_sign(psbt, derived_key->priv_key + 1,
-                                EC_PRIVATE_KEY_LEN, EC_FLAG_GRIND_R);
-
-      bip32_key_free(derived_key);
-
-      if (ret == WALLY_OK) {
-        signatures_added++;
-        break;
-      } else {
-        ESP_LOGE(TAG, "Failed to sign input %zu: %d", i, ret);
-      }
+    if (ret == WALLY_OK) {
+      signatures_added++;
+    } else {
+      ESP_LOGE(TAG, "Failed to sign input %zu: %d", i, ret);
     }
   }
 
