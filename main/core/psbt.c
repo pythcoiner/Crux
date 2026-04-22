@@ -120,6 +120,25 @@ bool try_match_registry(const unsigned char *keypath, size_t keypath_len,
   return true;
 }
 
+bool claim_regenerate(const claim_t *claim, bool is_testnet,
+                      expected_scripts_t *out) {
+  if (!claim || !out) return false;
+  memset(out, 0, sizeof(*out));
+
+  if (claim->kind == CLAIM_WHITELIST) {
+    return ss_scriptpubkey_with_redeem(
+        claim->whitelist.script,
+        claim->whitelist.account,
+        claim->whitelist.chain,
+        claim->whitelist.index,
+        is_testnet,
+        out->spk, &out->spk_len,
+        out->redeem, &out->redeem_len);
+  }
+
+  return false; /* CLAIM_REGISTRY: P26 */
+}
+
 static bool check_keypath_network(const unsigned char *keypath,
                                   size_t keypath_len, bool *is_testnet) {
   if (keypath_len < 12) {
