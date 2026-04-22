@@ -54,4 +54,8 @@ bool ss_keypath_format(const ss_keypath_t *kp, char *buf, size_t buf_size);
 
 bool ss_keypath_is_whitelisted(const ss_keypath_t *kp, bool is_testnet);
 
+bool ss_scriptpubkey(ss_script_type_t script, uint32_t account,
+                     uint32_t chain, uint32_t index, bool is_testnet,
+                     uint8_t *out, size_t *out_len);
+
 #endif // SS_WHITELIST_H

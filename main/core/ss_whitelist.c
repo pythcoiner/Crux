@@ -1,5 +1,8 @@
 #include "ss_whitelist.h"
+#include "key.h"
 #include <stdio.h>
+#include <wally_bip32.h>
+#include <wally_script.h>
 
 bool ss_keypath_parse(const unsigned char *keypath_after_fp,
                       size_t keypath_len_after_fp,
@@ -64,4 +67,40 @@ bool ss_keypath_is_whitelisted(const ss_keypath_t *kp, bool is_testnet) {
     return false;
 
   return true;
+}
+
+bool ss_scriptpubkey(ss_script_type_t script, uint32_t account,
+                     uint32_t chain, uint32_t index, bool is_testnet,
+                     uint8_t *out, size_t *out_len) {
+  switch (script) {
+    case SS_SCRIPT_P2WPKH: {
+      ss_keypath_t kp = {
+        .script  = SS_SCRIPT_P2WPKH,
+        .purpose = 84,
+        .coin    = is_testnet ? 1u : 0u,
+        .account = account,
+        .chain   = chain,
+        .index   = index,
+      };
+      char path[SS_KEYPATH_FMT_MAX];
+      if (!ss_keypath_format(&kp, path, sizeof(path)))
+        return false;
+
+      struct ext_key *derived_key = NULL;
+      if (!key_get_derived_key(path, &derived_key))
+        return false;
+
+      int ret = wally_witness_program_from_bytes(
+          derived_key->pub_key, EC_PUBLIC_KEY_LEN,
+          WALLY_SCRIPT_HASH160,
+          out, 22, out_len);
+      bip32_key_free(derived_key);
+      return ret == WALLY_OK;
+    }
+    case SS_SCRIPT_P2PKH:
+    case SS_SCRIPT_P2SH_P2WPKH:
+    case SS_SCRIPT_P2TR:
+    default:
+      return false;
+  }
 }
