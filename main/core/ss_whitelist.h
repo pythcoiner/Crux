@@ -50,6 +50,9 @@ bool ss_keypath_parse(const unsigned char *keypath_after_fp,
 /* Maximum buffer size for ss_keypath_format output ("m/86'/1'/100'/1/99\0" = 19 bytes). */
 #define SS_KEYPATH_FMT_MAX 32
 
+#define SS_P2SH_P2WPKH_REDEEM_LEN   22   /* OP_0 <20-byte pkh> */
+#define SS_P2SH_P2WPKH_SPK_LEN      23   /* OP_HASH160 <20-byte hash> OP_EQUAL */
+
 bool ss_keypath_format(const ss_keypath_t *kp, char *buf, size_t buf_size);
 
 bool ss_keypath_is_whitelisted(const ss_keypath_t *kp, bool is_testnet);
@@ -57,5 +60,16 @@ bool ss_keypath_is_whitelisted(const ss_keypath_t *kp, bool is_testnet);
 bool ss_scriptpubkey(ss_script_type_t script, uint32_t account,
                      uint32_t chain, uint32_t index, bool is_testnet,
                      uint8_t *out, size_t *out_len);
+
+/*
+ * Like ss_scriptpubkey but also writes the redeem script into redeem_out/redeem_len
+ * for SS_SCRIPT_P2SH_P2WPKH inputs. For all other script types, *redeem_len is set
+ * to 0 and behaviour matches ss_scriptpubkey.
+ * redeem_out must have room for SS_P2SH_P2WPKH_REDEEM_LEN bytes.
+ */
+bool ss_scriptpubkey_with_redeem(ss_script_type_t script, uint32_t account,
+                                  uint32_t chain, uint32_t index, bool is_testnet,
+                                  uint8_t *spk_out, size_t *spk_len,
+                                  uint8_t *redeem_out, size_t *redeem_len);
 
 #endif // SS_WHITELIST_H

@@ -133,9 +133,97 @@ bool ss_scriptpubkey(ss_script_type_t script, uint32_t account,
       *out_len = 25;
       return true;
     }
-    case SS_SCRIPT_P2SH_P2WPKH:
+    case SS_SCRIPT_P2SH_P2WPKH: {
+      ss_keypath_t kp = {
+        .script  = SS_SCRIPT_P2SH_P2WPKH,
+        .purpose = 49,
+        .coin    = is_testnet ? 1u : 0u,
+        .account = account,
+        .chain   = chain,
+        .index   = index,
+      };
+      char path[SS_KEYPATH_FMT_MAX];
+      if (!ss_keypath_format(&kp, path, sizeof(path)))
+        return false;
+
+      struct ext_key *derived_key = NULL;
+      if (!key_get_derived_key(path, &derived_key))
+        return false;
+
+      /* Build the 22-byte inner witness program (OP_0 <20-byte pkh>). */
+      uint8_t witness_prog[SS_P2SH_P2WPKH_REDEEM_LEN];
+      size_t  witness_prog_len = 0;
+      int ret = wally_witness_program_from_bytes(
+          derived_key->pub_key, EC_PUBLIC_KEY_LEN,
+          WALLY_SCRIPT_HASH160,
+          witness_prog, sizeof(witness_prog), &witness_prog_len);
+      bip32_key_free(derived_key);
+      if (ret != WALLY_OK || witness_prog_len != SS_P2SH_P2WPKH_REDEEM_LEN)
+        return false;
+
+      /* Hash the witness program and wrap in OP_HASH160 <sh20> OP_EQUAL. */
+      uint8_t sh20[HASH160_LEN];
+      ret = wally_hash160(witness_prog, witness_prog_len, sh20, HASH160_LEN);
+      if (ret != WALLY_OK)
+        return false;
+
+      out[0] = 0xa9;               /* OP_HASH160 */
+      out[1] = 0x14;               /* push 20 bytes */
+      memcpy(out + 2, sh20, 20);   /* 20-byte script hash */
+      out[22] = 0x87;              /* OP_EQUAL */
+      *out_len = SS_P2SH_P2WPKH_SPK_LEN;
+      return true;
+    }
     case SS_SCRIPT_P2TR:
     default:
       return false;
   }
+}
+
+bool ss_scriptpubkey_with_redeem(ss_script_type_t script, uint32_t account,
+                                  uint32_t chain, uint32_t index, bool is_testnet,
+                                  uint8_t *spk_out, size_t *spk_len,
+                                  uint8_t *redeem_out, size_t *redeem_len) {
+  if (script != SS_SCRIPT_P2SH_P2WPKH) {
+    *redeem_len = 0;
+    return ss_scriptpubkey(script, account, chain, index, is_testnet, spk_out, spk_len);
+  }
+
+  ss_keypath_t kp = {
+    .script  = SS_SCRIPT_P2SH_P2WPKH,
+    .purpose = 49,
+    .coin    = is_testnet ? 1u : 0u,
+    .account = account,
+    .chain   = chain,
+    .index   = index,
+  };
+  char path[SS_KEYPATH_FMT_MAX];
+  if (!ss_keypath_format(&kp, path, sizeof(path)))
+    return false;
+
+  struct ext_key *derived_key = NULL;
+  if (!key_get_derived_key(path, &derived_key))
+    return false;
+
+  /* Build the 22-byte inner witness program (also the redeem script). */
+  int ret = wally_witness_program_from_bytes(
+      derived_key->pub_key, EC_PUBLIC_KEY_LEN,
+      WALLY_SCRIPT_HASH160,
+      redeem_out, SS_P2SH_P2WPKH_REDEEM_LEN, redeem_len);
+  bip32_key_free(derived_key);
+  if (ret != WALLY_OK || *redeem_len != SS_P2SH_P2WPKH_REDEEM_LEN)
+    return false;
+
+  /* Hash the redeem script and wrap in OP_HASH160 <sh20> OP_EQUAL. */
+  uint8_t sh20[HASH160_LEN];
+  ret = wally_hash160(redeem_out, *redeem_len, sh20, HASH160_LEN);
+  if (ret != WALLY_OK)
+    return false;
+
+  spk_out[0] = 0xa9;               /* OP_HASH160 */
+  spk_out[1] = 0x14;               /* push 20 bytes */
+  memcpy(spk_out + 2, sh20, 20);   /* 20-byte script hash */
+  spk_out[22] = 0x87;              /* OP_EQUAL */
+  *spk_len = SS_P2SH_P2WPKH_SPK_LEN;
+  return true;
 }
