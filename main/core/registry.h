@@ -21,11 +21,13 @@ typedef struct {
   size_t num_paths;
   uint32_t origin_path[MAX_KEYPATH_ORIGIN_DEPTH];
   size_t origin_path_len;
+  bool persisted;
 } registry_entry_t;
 
 size_t registry_count(void);
 const registry_entry_t *registry_get(size_t i);
 const registry_entry_t *registry_find_by_id(const char *id);
+bool registry_remove(const char *id);
 bool registry_add_from_string(const char *id, const char *descriptor_str,
                               storage_location_t loc, bool persist);
 void registry_clear(void);

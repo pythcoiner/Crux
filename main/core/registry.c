@@ -31,6 +31,47 @@ const registry_entry_t *registry_find_by_id(const char *id) {
   return NULL;
 }
 
+bool registry_remove(const char *id) {
+  if (!id) return false;
+  size_t idx = registry_len; // sentinel: "not found"
+  for (size_t i = 0; i < registry_len; i++) {
+    if (strncmp(registry_entries[i].id, id, REGISTRY_ID_MAX_LEN) == 0) {
+      idx = i;
+      break;
+    }
+  }
+  if (idx == registry_len) {
+    ESP_LOGE(TAG, "registry_remove: id '%s' not found", id);
+    return false;
+  }
+
+  if (registry_entries[idx].desc != NULL) {
+    wally_descriptor_free(registry_entries[idx].desc);
+    registry_entries[idx].desc = NULL;
+  }
+
+  esp_err_t err = ESP_OK;
+  if (registry_entries[idx].persisted) {
+    err = storage_delete_descriptor(
+        registry_entries[idx].loc,
+        registry_entries[idx].id);
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "registry_remove: storage_delete_descriptor failed (%d)", err);
+    }
+  }
+
+  if (idx < registry_len - 1) {
+    memmove(&registry_entries[idx],
+            &registry_entries[idx + 1],
+            (registry_len - idx - 1) * sizeof(registry_entry_t));
+  }
+
+  memset(&registry_entries[registry_len - 1], 0, sizeof(registry_entry_t));
+  registry_len--;
+
+  return (err == ESP_OK);
+}
+
 void registry_clear(void) {
   for (size_t i = 0; i < registry_len; i++) {
     if (registry_entries[i].desc != NULL) {
@@ -175,6 +216,7 @@ bool registry_add_from_string(const char *id, const char *descriptor_str,
       registry_len--;
       return false;
     }
+    e->persisted = true;
   }
 
   ESP_LOGI(TAG, "added '%s' (%zu entries total)", id, registry_len);
