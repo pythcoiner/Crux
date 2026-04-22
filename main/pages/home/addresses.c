@@ -311,72 +311,79 @@ static void refresh_address_list(void) {
   lv_obj_clean(address_list_container);
   stored_count = 0;
 
-  wallet_policy_t policy = wallet_get_policy();
-
-  // For multisig without descriptor, show message
-  if (policy == WALLET_POLICY_MULTISIG && !wallet_has_descriptor()) {
-    lv_obj_t *msg = theme_create_label(
-        address_list_container,
-        "Multisig addresses require a wallet descriptor.\n\n"
-        "Scan your wallet descriptor QR code to view addresses.",
-        false);
-    lv_obj_set_width(msg, LV_PCT(100));
-    lv_obj_set_style_text_align(msg, LV_TEXT_ALIGN_CENTER, 0);
-    return;
-  }
-
   if (address_offset == 0)
     lv_obj_add_state(prev_button, LV_STATE_DISABLED);
   else
     lv_obj_clear_state(prev_button, LV_STATE_DISABLED);
 
+  uint16_t sel = lv_dropdown_get_selected(source_dropdown);
+  bool is_testnet = (wallet_get_network() == WALLET_NETWORK_TESTNET);
+  uint32_t account = wallet_get_account();
+  uint32_t chain = show_change ? 1 : 0;
+
+  static const ss_script_type_t script_map[4] = {
+    SS_SCRIPT_P2WPKH,      /* 0 Native SegWit  */
+    SS_SCRIPT_P2TR,        /* 1 Taproot        */
+    SS_SCRIPT_P2PKH,       /* 2 Legacy         */
+    SS_SCRIPT_P2SH_P2WPKH, /* 3 Wrapped SegWit */
+  };
+
+  const registry_entry_t *reg_entry = NULL;
+  if (sel >= 4) {
+    reg_entry = registry_get((size_t)(sel - 4));
+    if (!reg_entry)
+      return;
+  }
+
   for (uint32_t i = 0; i < NUM_ADDRESSES; i++) {
     uint32_t idx = address_offset + i;
-    char *address = NULL;
-    bool success;
+    char     addr_buf[SS_ADDRESS_MAX_LEN];
+    char    *dynamic_addr = NULL;
+    bool     success = false;
 
-    if (policy == WALLET_POLICY_MULTISIG) {
-      success = show_change
-                    ? wallet_get_multisig_change_address(idx, &address)
-                    : wallet_get_multisig_receive_address(idx, &address);
+    if (reg_entry) {
+      uint32_t mp = (reg_entry->num_paths <= 1) ? 0 : chain;
+      int ret = wally_descriptor_to_address(reg_entry->desc, 0, mp, idx, 0,
+                                            &dynamic_addr);
+      success = (ret == WALLY_OK) && dynamic_addr;
     } else {
-      success = show_change ? wallet_get_change_address(idx, &address)
-                            : wallet_get_receive_address(idx, &address);
+      success = ss_address(script_map[sel], account, chain, idx, is_testnet,
+                           addr_buf, sizeof(addr_buf));
     }
 
-    if (!success || !address)
+    if (!success)
       continue;
 
-    // Store address for detail view access
+    /* Store address for detail view */
     int si = stored_count;
-    snprintf(stored_addresses[si], sizeof(stored_addresses[si]), "%s", address);
+    snprintf(stored_addresses[si], sizeof(stored_addresses[si]), "%s",
+             dynamic_addr ? dynamic_addr : addr_buf);
     stored_indices[si] = idx;
     stored_count++;
 
-    // Create truncated display text — fit to available width
-    // Estimate chars that fit: screen width / avg char width, minus index
-    // prefix
+    if (dynamic_addr) {
+      wally_free_string(dynamic_addr);
+      dynamic_addr = NULL;
+    }
+
+    /* Build truncated display label from the stored copy */
     const lv_font_t *font = theme_font_small();
     int avg_char_w = lv_font_get_glyph_width(font, '0', '0');
     int32_t usable_w =
         theme_get_screen_width() - 2 * theme_get_default_padding();
-    int max_chars = usable_w / avg_char_w - 4; // subtract "N: " prefix
-    int prefix = max_chars * 55 / 100;         // 55% prefix
-    int suffix = max_chars - prefix - 3;       // 3 for "..."
-    if (prefix < 6)
-      prefix = 6;
-    if (suffix < 4)
-      suffix = 4;
+    int max_chars = usable_w / avg_char_w - 4;
+    int prefix = max_chars * 55 / 100;
+    int suffix = max_chars - prefix - 3;
+    if (prefix < 6) prefix = 6;
+    if (suffix < 4) suffix = 4;
     char truncated[64];
-    truncate_address_middle(truncated, sizeof(truncated), address, prefix,
-                            suffix);
+    truncate_address_middle(truncated, sizeof(truncated),
+                            stored_addresses[si], prefix, suffix);
 
     char btn_text[80];
     snprintf(btn_text, sizeof(btn_text), "%u: %s", idx, truncated);
 
-    wally_free_string(address);
-
-    // Create clickable button
+    /* Create clickable button */
     lv_obj_t *btn = lv_btn_create(address_list_container);
     lv_obj_set_size(btn, LV_PCT(100), LV_SIZE_CONTENT);
     theme_apply_touch_button(btn, false);
