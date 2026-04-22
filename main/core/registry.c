@@ -82,6 +82,37 @@ void registry_clear(void) {
   registry_len = 0;
 }
 
+registry_entry_t *registry_match_keypath(const uint8_t *keypath,
+                                          size_t keypath_len,
+                                          size_t *cursor) {
+  if (!keypath || !cursor) return NULL;
+  if (keypath_len < 4) return NULL;
+  size_t payload = keypath_len - 4;
+  if (payload % 4 != 0) return NULL;
+  size_t total_depth = payload / 4;
+  if (total_depth > MAX_KEYPATH_TOTAL_DEPTH) return NULL;
+
+  for (size_t i = *cursor; i < registry_len; i++) {
+    registry_entry_t *e = &registry_entries[i];
+    if (e->origin_path_len > total_depth) continue;
+    if (memcmp(keypath + 4, e->origin_path,
+               e->origin_path_len * 4) != 0) continue;
+    size_t tail_depth = total_depth - e->origin_path_len;
+    if (tail_depth != MAX_KEYPATH_TAIL_DEPTH) continue;
+    const uint8_t *tail = keypath + 4 + e->origin_path_len * 4;
+    uint32_t mp, ix;
+    memcpy(&mp, tail, 4);
+    memcpy(&ix, tail + 4, 4);
+    if (mp & BIP32_INITIAL_HARDENED_CHILD) continue;
+    if (ix & BIP32_INITIAL_HARDENED_CHILD) continue;
+    if (mp > 1) continue;
+    if (e->num_paths == 1 && mp != 0) continue;
+    *cursor = i + 1;
+    return e;
+  }
+  return NULL;
+}
+
 // Convert an origin path string like "84'/0'/0'" to uint32_t[]
 // Returns false on overflow, invalid chars, or depth > max_depth.
 static bool parse_origin_path_str(const char *path, uint32_t *out,

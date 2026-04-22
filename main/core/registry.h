@@ -31,5 +31,8 @@ bool registry_remove(const char *id);
 bool registry_add_from_string(const char *id, const char *descriptor_str,
                               storage_location_t loc, bool persist);
 void registry_clear(void);
+registry_entry_t *registry_match_keypath(const uint8_t *keypath,
+                                         size_t keypath_len,
+                                         size_t *cursor);
 
 #endif // REGISTRY_H
