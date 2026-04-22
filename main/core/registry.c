@@ -21,3 +21,13 @@ const registry_entry_t *registry_find_by_id(const char *id) {
   }
   return NULL;
 }
+
+void registry_clear(void) {
+  for (size_t i = 0; i < registry_len; i++) {
+    if (registry_entries[i].desc != NULL) {
+      wally_descriptor_free(registry_entries[i].desc);
+    }
+  }
+  memset(registry_entries, 0, sizeof registry_entries);
+  registry_len = 0;
+}

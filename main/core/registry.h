@@ -25,5 +25,6 @@ typedef struct {
 size_t registry_count(void);
 const registry_entry_t *registry_get(size_t i);
 const registry_entry_t *registry_find_by_id(const char *id);
+void registry_clear(void);
 
 #endif // REGISTRY_H
