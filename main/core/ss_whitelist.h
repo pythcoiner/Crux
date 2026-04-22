@@ -43,4 +43,8 @@ static inline uint32_t ss_u32_le(const unsigned char *bytes) {
        | ((uint32_t)bytes[3] << 24);
 }
 
+bool ss_keypath_parse(const unsigned char *keypath_after_fp,
+                      size_t keypath_len_after_fp,
+                      ss_keypath_t *out);
+
 #endif // SS_WHITELIST_H

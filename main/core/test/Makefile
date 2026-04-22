@@ -42,7 +42,12 @@ LIBWALLY = libwally.a
 SRCS_DERIV = test_derivation_path.c
 TARGET_DERIV = test_derivation_path
 
-all: $(TARGET_DERIV)
+SRCS_SS_PARSE = test_ss_whitelist_parse.c
+TARGET_SS_PARSE = test_ss_whitelist_parse
+
+SS_SRC = ../ss_whitelist.c ../ss_whitelist.h
+
+all: $(TARGET_DERIV) $(TARGET_SS_PARSE)
 
 $(LIBWALLY): $(WALLY_SRC)
 	$(CC) $(CFLAGS) $(WALLY_CFLAGS) -c -o combined.o $<
@@ -53,10 +58,14 @@ KEY_SRC = ../key.c ../key.h ../../utils/secure_mem.h
 $(TARGET_DERIV): $(SRCS_DERIV) $(KEY_SRC) $(LIBWALLY)
 	$(CC) $(CFLAGS) $(TEST_INCS) -o $@ $(SRCS_DERIV) $(LIBWALLY)
 
-run: $(TARGET_DERIV)
+$(TARGET_SS_PARSE): $(SRCS_SS_PARSE) $(SS_SRC)
+	$(CC) $(CFLAGS) $(TEST_INCS) -o $@ $(SRCS_SS_PARSE)
+
+run: $(TARGET_DERIV) $(TARGET_SS_PARSE)
 	./$(TARGET_DERIV)
+	./$(TARGET_SS_PARSE)
 
 clean:
-	rm -f $(TARGET_DERIV) $(LIBWALLY) combined.o
+	rm -f $(TARGET_DERIV) $(TARGET_SS_PARSE) $(LIBWALLY) combined.o
 
 .PHONY: all run clean
