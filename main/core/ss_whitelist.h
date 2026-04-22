@@ -47,4 +47,9 @@ bool ss_keypath_parse(const unsigned char *keypath_after_fp,
                       size_t keypath_len_after_fp,
                       ss_keypath_t *out);
 
+/* Maximum buffer size for ss_keypath_format output ("m/86'/1'/100'/1/99\0" = 19 bytes). */
+#define SS_KEYPATH_FMT_MAX 32
+
+bool ss_keypath_format(const ss_keypath_t *kp, char *buf, size_t buf_size);
+
 #endif // SS_WHITELIST_H

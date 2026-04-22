@@ -1,4 +1,5 @@
 #include "ss_whitelist.h"
+#include <stdio.h>
 
 bool ss_keypath_parse(const unsigned char *keypath_after_fp,
                       size_t keypath_len_after_fp,
@@ -35,4 +36,11 @@ bool ss_keypath_parse(const unsigned char *keypath_after_fp,
   out->chain   = c[3];
   out->index   = c[4];
   return true;
+}
+
+bool ss_keypath_format(const ss_keypath_t *kp, char *buf, size_t buf_size) {
+  int n = snprintf(buf, buf_size, "m/%u'/%u'/%u'/%u/%u",
+                   kp->purpose, kp->coin, kp->account,
+                   kp->chain, kp->index);
+  return n >= 0 && (size_t)n < buf_size;
 }
