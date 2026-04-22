@@ -1,0 +1,1934 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "descriptor-rework",
+    "description": "Replace Kern's policy-gated wallet model with a BIP44/49/84/86 singlesig whitelist + auto-loaded descriptor registry, routing every PSBT sign/verify through a match->bind->regenerate->verify algorithm.",
+    "created_at": "2026-04-22T17:39:54+00:00"
+  },
+  "global_context": {
+    "plan_summary": "78-phase rework turning wallet.c from a policy-gated singlesig/multisig singleton into a thin shell over a singlesig-whitelist module (main/core/ss_whitelist) and a descriptor-registry module (main/core/registry). PSBT signing/classification is rewritten (psbt_classify_input/output + claim_regenerate). UI pages (Addresses, Address Checker, Wallet Settings) gain a source picker and lose the policy dropdown. Authoritative spec: .cm/spec/PLAN.md + SNIP.md + ROADMAP.md."
+  },
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "P01: Scaffolding: empty ss_whitelist/registry skeletons + CMake wiring",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-1.task-1",
+          "name": "Scaffolding: empty ss_whitelist/registry skeletons + CMake wiring",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [],
+          "context": {
+            "files_to_read": [
+              "main/CMakeLists.txt",
+              "main/core/wallet.h",
+              ".cm/spec/PLAN.md",
+              ".cm/spec/ROADMAP.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-1.task-1.md",
+          "roadmap_item_id": "item-1"
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "P02: ss_whitelist: types, constants, inline helpers",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-2.task-1",
+          "name": "ss_whitelist: types, constants, inline helpers",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-1.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/ss_whitelist.h",
+              ".cm/spec/SNIP.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-2.task-1.md",
+          "roadmap_item_id": "item-2"
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "P03: ss_keypath_parse + test_ss_whitelist_parse.c",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-3.task-1",
+          "name": "ss_keypath_parse + test_ss_whitelist_parse.c",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-2.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/ss_whitelist.h",
+              "main/core/key.c",
+              ".cm/spec/SNIP.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-3.task-1.md",
+          "roadmap_item_id": "item-3"
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "P04: ss_keypath_format + round-trip test",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-4.task-1",
+          "name": "ss_keypath_format + round-trip test",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-3.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/ss_whitelist.c",
+              "main/core/key.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-4.task-1.md",
+          "roadmap_item_id": "item-4"
+        }
+      ]
+    },
+    {
+      "id": "phase-5",
+      "name": "P05: ss_keypath_is_whitelisted + test_ss_whitelist_is_whitelisted.c",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-5.task-1",
+          "name": "ss_keypath_is_whitelisted + test_ss_whitelist_is_whitelisted.c",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-4.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/ss_whitelist.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-5.task-1.md",
+          "roadmap_item_id": "item-5"
+        }
+      ]
+    },
+    {
+      "id": "phase-6",
+      "name": "P06: ss_scriptpubkey dispatcher + P2WPKH branch",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-6.task-1",
+          "name": "ss_scriptpubkey dispatcher + P2WPKH branch",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-5.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/ss_whitelist.c",
+              "main/core/key.c",
+              ".cm/spec/SNIP.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-6.task-1.md",
+          "roadmap_item_id": "item-6"
+        }
+      ]
+    },
+    {
+      "id": "phase-7",
+      "name": "P07: ss_scriptpubkey P2PKH branch",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-7.task-1",
+          "name": "ss_scriptpubkey P2PKH branch",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-6.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/ss_whitelist.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-7.task-1.md",
+          "roadmap_item_id": "item-7"
+        }
+      ]
+    },
+    {
+      "id": "phase-8",
+      "name": "P08: ss_scriptpubkey P2SH_P2WPKH branch + ss_scriptpubkey_with_redeem variant",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-8.task-1",
+          "name": "ss_scriptpubkey P2SH_P2WPKH branch + ss_scriptpubkey_with_redeem variant",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-7.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/ss_whitelist.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-8.task-1.md",
+          "roadmap_item_id": "item-8"
+        }
+      ]
+    },
+    {
+      "id": "phase-9",
+      "name": "P09: ss_scriptpubkey P2TR branch (BIP341 tweak)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-9.task-1",
+          "name": "ss_scriptpubkey P2TR branch (BIP341 tweak)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-8.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/ss_whitelist.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-9.task-1.md",
+          "roadmap_item_id": "item-9"
+        }
+      ]
+    },
+    {
+      "id": "phase-10",
+      "name": "P10: ss_address dispatcher + test_ss_whitelist_regen.c integration tests",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-10.task-1",
+          "name": "ss_address dispatcher + test_ss_whitelist_regen.c integration tests",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-9.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/ss_whitelist.c",
+              ".cm/spec/PLAN.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-10.task-1.md",
+          "roadmap_item_id": "item-10"
+        }
+      ]
+    },
+    {
+      "id": "phase-11",
+      "name": "P11: purpose_script_binding_check_strict + _soft + test_purpose_binding.c",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-11.task-1",
+          "name": "purpose_script_binding_check_strict + _soft + test_purpose_binding.c",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-10.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/ss_whitelist.c",
+              ".cm/spec/PLAN.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-11.task-1.md",
+          "roadmap_item_id": "item-11"
+        }
+      ]
+    },
+    {
+      "id": "phase-12",
+      "name": "P12: registry: types, REGISTRY_MAX_ENTRIES, static storage",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-12.task-1",
+          "name": "registry: types, REGISTRY_MAX_ENTRIES, static storage",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-11.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/registry.h",
+              "main/core/descriptor_validator.c",
+              ".cm/spec/SNIP.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-12.task-1.md",
+          "roadmap_item_id": "item-12"
+        }
+      ]
+    },
+    {
+      "id": "phase-13",
+      "name": "P13: registry accessors: count / get / find_by_id",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-13.task-1",
+          "name": "registry accessors: count / get / find_by_id",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-12.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/registry.c",
+              "main/core/registry.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-13.task-1.md",
+          "roadmap_item_id": "item-13"
+        }
+      ]
+    },
+    {
+      "id": "phase-14",
+      "name": "P14: registry_clear (free each desc + zero array)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-14.task-1",
+          "name": "registry_clear (free each desc + zero array)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-13.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/registry.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-14.task-1.md",
+          "roadmap_item_id": "item-14"
+        }
+      ]
+    },
+    {
+      "id": "phase-15",
+      "name": "P15: registry_add_from_string in-memory path (persist=false)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-15.task-1",
+          "name": "registry_add_from_string in-memory path (persist=false)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-14.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/registry.c",
+              "main/core/descriptor_validator.c",
+              "main/core/key.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-15.task-1.md",
+          "roadmap_item_id": "item-15"
+        }
+      ]
+    },
+    {
+      "id": "phase-16",
+      "name": "P16: registry_add_from_string persist path via storage_save_descriptor",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-16.task-1",
+          "name": "registry_add_from_string persist path via storage_save_descriptor",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-15.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/registry.c",
+              "main/core/storage.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-16.task-1.md",
+          "roadmap_item_id": "item-16"
+        }
+      ]
+    },
+    {
+      "id": "phase-17",
+      "name": "P17: registry_remove (free + shift + storage_delete_descriptor)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-17.task-1",
+          "name": "registry_remove (free + shift + storage_delete_descriptor)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-16.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/registry.c",
+              "main/core/storage.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-17.task-1.md",
+          "roadmap_item_id": "item-17"
+        }
+      ]
+    },
+    {
+      "id": "phase-18",
+      "name": "P18: registry_match_keypath + test_registry_match.c",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-18.task-1",
+          "name": "registry_match_keypath + test_registry_match.c",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-17.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/registry.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-18.task-1.md",
+          "roadmap_item_id": "item-18"
+        }
+      ]
+    },
+    {
+      "id": "phase-19",
+      "name": "P19: registry_init: scan flash + SD, parse all, populate, log count",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-19.task-1",
+          "name": "registry_init: scan flash + SD, parse all, populate, log count",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-18.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/registry.c",
+              "main/core/storage.h",
+              "main/core/key.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-19.task-1.md",
+          "roadmap_item_id": "item-19"
+        }
+      ]
+    },
+    {
+      "id": "phase-20",
+      "name": "P20: test_registry_parse.c (wpkh / wsh(sortedmulti) / tr / miniscript)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-20.task-1",
+          "name": "test_registry_parse.c (wpkh / wsh(sortedmulti) / tr / miniscript)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-19.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/registry.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-20.task-1.md",
+          "roadmap_item_id": "item-20"
+        }
+      ]
+    },
+    {
+      "id": "phase-21",
+      "name": "P21: Add settings_get/set_permissive_signing + KEY_PERMISSIVE_SIGNING (additive)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-21.task-1",
+          "name": "Add settings_get/set_permissive_signing + KEY_PERMISSIVE_SIGNING (additive)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-20.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/settings.c",
+              "main/core/settings.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-21.task-1.md",
+          "roadmap_item_id": "item-21"
+        }
+      ]
+    },
+    {
+      "id": "phase-22",
+      "name": "P22: psbt.h: claim_t, expected_scripts_t, input/output_ownership_t + fn decls",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-22.task-1",
+          "name": "psbt.h: claim_t, expected_scripts_t, input/output_ownership_t + fn decls",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-21.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/psbt.h",
+              ".cm/spec/SNIP.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-22.task-1.md",
+          "roadmap_item_id": "item-22"
+        }
+      ]
+    },
+    {
+      "id": "phase-23",
+      "name": "P23: psbt_input_utxo_script helper (witness-utxo first, fallback utxo+prevout)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-23.task-1",
+          "name": "psbt_input_utxo_script helper (witness-utxo first, fallback utxo+prevout)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-22.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/psbt.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-23.task-1.md",
+          "roadmap_item_id": "item-23"
+        }
+      ]
+    },
+    {
+      "id": "phase-24",
+      "name": "P24: try_match_whitelist + try_match_registry wrappers (with cursor pagination)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-24.task-1",
+          "name": "try_match_whitelist + try_match_registry wrappers (with cursor pagination)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-23.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/psbt.c",
+              "main/core/ss_whitelist.h",
+              "main/core/registry.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-24.task-1.md",
+          "roadmap_item_id": "item-24"
+        }
+      ]
+    },
+    {
+      "id": "phase-25",
+      "name": "P25: claim_regenerate whitelist branch + test",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-25.task-1",
+          "name": "claim_regenerate whitelist branch + test",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-24.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/psbt.c",
+              "main/core/ss_whitelist.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-25.task-1.md",
+          "roadmap_item_id": "item-25"
+        }
+      ]
+    },
+    {
+      "id": "phase-26",
+      "name": "P26: claim_regenerate registry branch (wsh / sh(wsh) / sh(multi)) + test",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-26.task-1",
+          "name": "claim_regenerate registry branch (wsh / sh(wsh) / sh(multi)) + test",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-25.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/psbt.c",
+              "main/core/registry.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-26.task-1.md",
+          "roadmap_item_id": "item-26"
+        }
+      ]
+    },
+    {
+      "id": "phase-27",
+      "name": "P27: psbt_classify_input + fixtures A/D/E of test_psbt_classify.c",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-27.task-1",
+          "name": "psbt_classify_input + fixtures A/D/E of test_psbt_classify.c",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-26.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/psbt.c",
+              "main/core/settings.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-27.task-1.md",
+          "roadmap_item_id": "item-27"
+        }
+      ]
+    },
+    {
+      "id": "phase-28",
+      "name": "P28: psbt_classify_output + fixtures B/C of test_psbt_classify.c",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-28.task-1",
+          "name": "psbt_classify_output + fixtures B/C of test_psbt_classify.c",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-27.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/psbt.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-28.task-1.md",
+          "roadmap_item_id": "item-28"
+        }
+      ]
+    },
+    {
+      "id": "phase-29",
+      "name": "P29: Boot wiring: registry_init called after wallet_init in key_confirmation.c",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-29.task-1",
+          "name": "Boot wiring: registry_init called after wallet_init in key_confirmation.c",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-28.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/shared/key_confirmation.c",
+              "main/core/registry.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-29.task-1.md",
+          "roadmap_item_id": "item-29"
+        }
+      ]
+    },
+    {
+      "id": "phase-30",
+      "name": "P30: Rewrite psbt_sign body to use classifier + claim_regenerate",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-30.task-1",
+          "name": "Rewrite psbt_sign body to use classifier + claim_regenerate",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-29.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/psbt.c",
+              "main/core/settings.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-30.task-1.md",
+          "roadmap_item_id": "item-30"
+        }
+      ]
+    },
+    {
+      "id": "phase-31",
+      "name": "P31: Delete psbt_get_output_derivation; migrate callers to psbt_classify_output",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-31.task-1",
+          "name": "Delete psbt_get_output_derivation; migrate callers to psbt_classify_output",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-30.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/psbt.c",
+              "main/core/psbt.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-31.task-1.md",
+          "roadmap_item_id": "item-31"
+        }
+      ]
+    },
+    {
+      "id": "phase-32",
+      "name": "P32: Delete psbt_verify_output_with_descriptor; migrate callers",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-32.task-1",
+          "name": "Delete psbt_verify_output_with_descriptor; migrate callers",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-31.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/psbt.c",
+              "main/core/psbt.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-32.task-1.md",
+          "roadmap_item_id": "item-32"
+        }
+      ]
+    },
+    {
+      "id": "phase-33",
+      "name": "P33: Delete/replace psbt_is_multisig (callers switch to claim.kind==CLAIM_REGISTRY)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-33.task-1",
+          "name": "Delete/replace psbt_is_multisig (callers switch to claim.kind==CLAIM_REGISTRY)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-32.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/psbt.c",
+              "main/core/psbt.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-33.task-1.md",
+          "roadmap_item_id": "item-33"
+        }
+      ]
+    },
+    {
+      "id": "phase-34",
+      "name": "P34: addresses.c: source-picker scaffold replacing type_dropdown",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-34.task-1",
+          "name": "addresses.c: source-picker scaffold replacing type_dropdown",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-33.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/home/addresses.c",
+              "main/core/ss_whitelist.h",
+              "main/core/registry.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-34.task-1.md",
+          "roadmap_item_id": "item-34"
+        }
+      ]
+    },
+    {
+      "id": "phase-35",
+      "name": "P35: addresses.c: refresh_address_list dispatches to ss_address / wally_descriptor_to_address",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-35.task-1",
+          "name": "addresses.c: refresh_address_list dispatches to ss_address / wally_descriptor_to_address",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-34.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/home/addresses.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-35.task-1.md",
+          "roadmap_item_id": "item-35"
+        }
+      ]
+    },
+    {
+      "id": "phase-36",
+      "name": "P36: addresses.c: account input + remove 'descriptor required' empty state + rename Load->Register",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-36.task-1",
+          "name": "addresses.c: account input + remove 'descriptor required' empty state + rename Load->Register",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-35.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/home/addresses.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-36.task-1.md",
+          "roadmap_item_id": "item-36"
+        }
+      ]
+    },
+    {
+      "id": "phase-37",
+      "name": "P37: address_checker.c: source picker",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-37.task-1",
+          "name": "address_checker.c: source picker",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-36.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/shared/address_checker.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-37.task-1.md",
+          "roadmap_item_id": "item-37"
+        }
+      ]
+    },
+    {
+      "id": "phase-38",
+      "name": "P38: address_checker.c: sweep within selected source",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-38.task-1",
+          "name": "address_checker.c: sweep within selected source",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-37.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/shared/address_checker.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-38.task-1.md",
+          "roadmap_item_id": "item-38"
+        }
+      ]
+    },
+    {
+      "id": "phase-39",
+      "name": "P39: store_descriptor.c: auto-register via registry_add_from_string(persist=false) after save",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-39.task-1",
+          "name": "store_descriptor.c: auto-register via registry_add_from_string(persist=false) after save",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-38.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/store_descriptor.c",
+              "main/core/registry.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-39.task-1.md",
+          "roadmap_item_id": "item-39"
+        }
+      ]
+    },
+    {
+      "id": "phase-40",
+      "name": "P40: load_descriptor_storage.c: register after .kef decrypt (success_from_kef_decrypt)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-40.task-1",
+          "name": "load_descriptor_storage.c: register after .kef decrypt (success_from_kef_decrypt)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-39.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/load_descriptor_storage.c",
+              "main/core/registry.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-40.task-1.md",
+          "roadmap_item_id": "item-40"
+        }
+      ]
+    },
+    {
+      "id": "phase-41",
+      "name": "P41: load_descriptor_storage.c: register after plaintext load (paranoia)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-41.task-1",
+          "name": "load_descriptor_storage.c: register after plaintext load (paranoia)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-40.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/load_descriptor_storage.c",
+              "main/core/registry.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-41.task-1.md",
+          "roadmap_item_id": "item-41"
+        }
+      ]
+    },
+    {
+      "id": "phase-42",
+      "name": "P42: descriptor_validator: redirect info_confirm_proceed to registry_add_from_string(persist=true)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-42.task-1",
+          "name": "descriptor_validator: redirect info_confirm_proceed to registry_add_from_string(persist=true)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-41.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/descriptor_validator.c",
+              "main/pages/store_descriptor.c",
+              "main/core/registry.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-42.task-1.md",
+          "roadmap_item_id": "item-42"
+        }
+      ]
+    },
+    {
+      "id": "phase-43",
+      "name": "P43: descriptor_validator: add WARN dialog via purpose_script_binding_check_soft",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-43.task-1",
+          "name": "descriptor_validator: add WARN dialog via purpose_script_binding_check_soft",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-42.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/descriptor_validator.c",
+              "main/core/ss_whitelist.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-43.task-1.md",
+          "roadmap_item_id": "item-43"
+        }
+      ]
+    },
+    {
+      "id": "phase-44",
+      "name": "P44: descriptor_validator: delete apply_changes_and_verify (lines 350-386)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-44.task-1",
+          "name": "descriptor_validator: delete apply_changes_and_verify (lines 350-386)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-43.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/descriptor_validator.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-44.task-1.md",
+          "roadmap_item_id": "item-44"
+        }
+      ]
+    },
+    {
+      "id": "phase-45",
+      "name": "P45: descriptor_validator: delete check_attributes_and_verify + state fields",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-45.task-1",
+          "name": "descriptor_validator: delete check_attributes_and_verify + state fields",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-44.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/descriptor_validator.c",
+              "main/core/descriptor_validator.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-45.task-1.md",
+          "roadmap_item_id": "item-45"
+        }
+      ]
+    },
+    {
+      "id": "phase-46",
+      "name": "P46: descriptor_validator: delete parse_origin_path helper (lines 80-143)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-46.task-1",
+          "name": "descriptor_validator: delete parse_origin_path helper (lines 80-143)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-45.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/descriptor_validator.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-46.task-1.md",
+          "roadmap_item_id": "item-46"
+        }
+      ]
+    },
+    {
+      "id": "phase-47",
+      "name": "P47: wallet_settings.c: remove policy_dropdown UI element + handlers",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-47.task-1",
+          "name": "wallet_settings.c: remove policy_dropdown UI element + handlers",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-46.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/settings/wallet_settings.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-47.task-1.md",
+          "roadmap_item_id": "item-47"
+        }
+      ]
+    },
+    {
+      "id": "phase-48",
+      "name": "P48: wallet_settings.c: remove account spinner + save handler",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-48.task-1",
+          "name": "wallet_settings.c: remove account spinner + save handler",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-47.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/settings/wallet_settings.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-48.task-1.md",
+          "roadmap_item_id": "item-48"
+        }
+      ]
+    },
+    {
+      "id": "phase-49",
+      "name": "P49: wallet_settings.c: remove derivation-path preview label",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-49.task-1",
+          "name": "wallet_settings.c: remove derivation-path preview label",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-48.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/settings/wallet_settings.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-49.task-1.md",
+          "roadmap_item_id": "item-49"
+        }
+      ]
+    },
+    {
+      "id": "phase-50",
+      "name": "P50: wallet_settings.c: add 'Permissive signing' toggle wired to new setting",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-50.task-1",
+          "name": "wallet_settings.c: add 'Permissive signing' toggle wired to new setting",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-49.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/settings/wallet_settings.c",
+              "main/core/settings.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-50.task-1.md",
+          "roadmap_item_id": "item-50"
+        }
+      ]
+    },
+    {
+      "id": "phase-51",
+      "name": "P51: wallet_settings.c: update update_apply_button_state",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-51.task-1",
+          "name": "wallet_settings.c: update update_apply_button_state",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-50.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/settings/wallet_settings.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-51.task-1.md",
+          "roadmap_item_id": "item-51"
+        }
+      ]
+    },
+    {
+      "id": "phase-52",
+      "name": "P52: registered_descriptors.c sub-page with Remove/View (optional)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-52.task-1",
+          "name": "registered_descriptors.c sub-page with Remove/View (optional)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-51.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/settings/wallet_settings.c",
+              "main/core/registry.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-52.task-1.md",
+          "roadmap_item_id": "item-52"
+        }
+      ]
+    },
+    {
+      "id": "phase-53",
+      "name": "P53: Drop settings_get_default_policy() + wallet_set_policy() from key_confirmation.c",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-53.task-1",
+          "name": "Drop settings_get_default_policy() + wallet_set_policy() from key_confirmation.c",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-52.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/pages/shared/key_confirmation.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-53.task-1.md",
+          "roadmap_item_id": "item-53"
+        }
+      ]
+    },
+    {
+      "id": "phase-54",
+      "name": "P54: Remove settings_get_default_policy / settings_set_default_policy",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-54.task-1",
+          "name": "Remove settings_get_default_policy / settings_set_default_policy",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-53.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/settings.c",
+              "main/core/settings.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-54.task-1.md",
+          "roadmap_item_id": "item-54"
+        }
+      ]
+    },
+    {
+      "id": "phase-55",
+      "name": "P55: Remove KEY_DEFAULT_POL constant",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-55.task-1",
+          "name": "Remove KEY_DEFAULT_POL constant",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-54.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/settings.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-55.task-1.md",
+          "roadmap_item_id": "item-55"
+        }
+      ]
+    },
+    {
+      "id": "phase-56",
+      "name": "P56: wallet.c: delete derive_address, derive_multisig_address helpers",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-56.task-1",
+          "name": "wallet.c: delete derive_address, derive_multisig_address helpers",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-55.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-56.task-1.md",
+          "roadmap_item_id": "item-56"
+        }
+      ]
+    },
+    {
+      "id": "phase-57",
+      "name": "P57: wallet.c: simplify wallet_init(network) to network-record only",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-57.task-1",
+          "name": "wallet.c: simplify wallet_init(network) to network-record only",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-56.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.c",
+              "main/core/wallet.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-57.task-1.md",
+          "roadmap_item_id": "item-57"
+        }
+      ]
+    },
+    {
+      "id": "phase-58",
+      "name": "P58: wallet.c: wallet_cleanup calls registry_clear()",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-58.task-1",
+          "name": "wallet.c: wallet_cleanup calls registry_clear()",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-57.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.c",
+              "main/core/registry.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-58.task-1.md",
+          "roadmap_item_id": "item-58"
+        }
+      ]
+    },
+    {
+      "id": "phase-59",
+      "name": "P59: wallet.c: delete statics (wallet_type/policy/account/derivation_path_buffer/loaded_descriptor/account_key)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-59.task-1",
+          "name": "wallet.c: delete statics (wallet_type/policy/account/derivation_path_buffer/loaded_descriptor/account_key)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-58.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.c"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-59.task-1.md",
+          "roadmap_item_id": "item-59"
+        }
+      ]
+    },
+    {
+      "id": "phase-60",
+      "name": "P60: wallet.h: delete wallet_policy_t enum",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-60.task-1",
+          "name": "wallet.h: delete wallet_policy_t enum",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-59.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-60.task-1.md",
+          "roadmap_item_id": "item-60"
+        }
+      ]
+    },
+    {
+      "id": "phase-61",
+      "name": "P61: wallet.h: delete format_derivation_path/format_derivation_compact/get_derivation",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-61.task-1",
+          "name": "wallet.h: delete format_derivation_path/format_derivation_compact/get_derivation",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-60.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-61.task-1.md",
+          "roadmap_item_id": "item-61"
+        }
+      ]
+    },
+    {
+      "id": "phase-62",
+      "name": "P62: wallet.h: delete get_account / set_account",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-62.task-1",
+          "name": "wallet.h: delete get_account / set_account",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-61.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-62.task-1.md",
+          "roadmap_item_id": "item-62"
+        }
+      ]
+    },
+    {
+      "id": "phase-63",
+      "name": "P63: wallet.h: delete get_receive_address / get_change_address / get_scriptpubkey",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-63.task-1",
+          "name": "wallet.h: delete get_receive_address / get_change_address / get_scriptpubkey",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-62.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-63.task-1.md",
+          "roadmap_item_id": "item-63"
+        }
+      ]
+    },
+    {
+      "id": "phase-64",
+      "name": "P64: wallet.h: delete has_descriptor / load_descriptor / clear_descriptor",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-64.task-1",
+          "name": "wallet.h: delete has_descriptor / load_descriptor / clear_descriptor",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-63.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-64.task-1.md",
+          "roadmap_item_id": "item-64"
+        }
+      ]
+    },
+    {
+      "id": "phase-65",
+      "name": "P65: wallet.h: delete get_multisig_receive_address / get_multisig_change_address",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-65.task-1",
+          "name": "wallet.h: delete get_multisig_receive_address / get_multisig_change_address",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-64.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-65.task-1.md",
+          "roadmap_item_id": "item-65"
+        }
+      ]
+    },
+    {
+      "id": "phase-66",
+      "name": "P66: wallet.h: delete get_policy / set_policy",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-66.task-1",
+          "name": "wallet.h: delete get_policy / set_policy",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-65.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.h"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-66.task-1.md",
+          "roadmap_item_id": "item-66"
+        }
+      ]
+    },
+    {
+      "id": "phase-67",
+      "name": "P67: Move BIP-380 checksum helper to descriptor_checksum.c (optional)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-67.task-1",
+          "name": "Move BIP-380 checksum helper to descriptor_checksum.c (optional)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-66.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/wallet.c",
+              "main/core/wallet.h",
+              "main/CMakeLists.txt"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-67.task-1.md",
+          "roadmap_item_id": "item-67"
+        }
+      ]
+    },
+    {
+      "id": "phase-68",
+      "name": "P68: Final rg sweep for stragglers of the removed wallet_* API; migrate or delete",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-68.task-1",
+          "name": "Final rg sweep for stragglers of the removed wallet_* API; migrate or delete",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-67.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-68.task-1.md",
+          "roadmap_item_id": "item-68"
+        }
+      ]
+    },
+    {
+      "id": "phase-69",
+      "name": "P69: Remove dead tests covering deleted policy paths under main/core/test/",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-69.task-1",
+          "name": "Remove dead tests covering deleted policy paths under main/core/test/",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-68.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "main/core/test/"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-69.task-1.md",
+          "roadmap_item_id": "item-69"
+        }
+      ]
+    },
+    {
+      "id": "phase-70",
+      "name": "P70: Update repo-root ROADMAP.md to reflect new model",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-70.task-1",
+          "name": "Update repo-root ROADMAP.md to reflect new model",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-69.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "ROADMAP.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-70.task-1.md",
+          "roadmap_item_id": "item-70"
+        }
+      ]
+    },
+    {
+      "id": "phase-71",
+      "name": "P71: CHANGELOG entry for the rework",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-71.task-1",
+          "name": "CHANGELOG entry for the rework",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-70.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              "CHANGELOG.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-71.task-1.md",
+          "roadmap_item_id": "item-71"
+        }
+      ]
+    },
+    {
+      "id": "phase-72",
+      "name": "P72: Device: clean builds on wave_4b, wave_35, wave_5",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-72.task-1",
+          "name": "Device: clean builds on wave_4b, wave_35, wave_5",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-71.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              ".justfile"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-72.task-1.md",
+          "roadmap_item_id": "item-72"
+        }
+      ]
+    },
+    {
+      "id": "phase-73",
+      "name": "P73: Device: flash wave_35, store 3 plaintext descriptors, reboot, verify auto-load",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-73.task-1",
+          "name": "Device: flash wave_35, store 3 plaintext descriptors, reboot, verify auto-load",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-72.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              ".cm/spec/PLAN.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-73.task-1.md",
+          "roadmap_item_id": "item-73"
+        }
+      ]
+    },
+    {
+      "id": "phase-74",
+      "name": "P74: Device: Addresses page per-source vs Sparrow references",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-74.task-1",
+          "name": "Device: Addresses page per-source vs Sparrow references",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-73.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              ".cm/spec/PLAN.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-74.task-1.md",
+          "roadmap_item_id": "item-74"
+        }
+      ]
+    },
+    {
+      "id": "phase-75",
+      "name": "P75: Device: PSBT behavioural spec (every row of PLAN.md \u00a7Behavioural spec)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-75.task-1",
+          "name": "Device: PSBT behavioural spec (every row of PLAN.md \u00a7Behavioural spec)",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-74.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              ".cm/spec/PLAN.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-75.task-1.md",
+          "roadmap_item_id": "item-75"
+        }
+      ]
+    },
+    {
+      "id": "phase-76",
+      "name": "P76: Device: Settings UI gone/added as expected; permissive toggle works",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-76.task-1",
+          "name": "Device: Settings UI gone/added as expected; permissive toggle works",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-75.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              ".cm/spec/PLAN.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-76.task-1.md",
+          "roadmap_item_id": "item-76"
+        }
+      ]
+    },
+    {
+      "id": "phase-77",
+      "name": "P77: Device: Address checker known + random per source",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-77.task-1",
+          "name": "Device: Address checker known + random per source",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-76.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              ".cm/spec/PLAN.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-77.task-1.md",
+          "roadmap_item_id": "item-77"
+        }
+      ]
+    },
+    {
+      "id": "phase-78",
+      "name": "P78: Device: WARN-dialog gating on mismatched descriptor registration",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "phase-78.task-1",
+          "name": "Device: WARN-dialog gating on mismatched descriptor registration",
+          "type": "implement",
+          "status": "pending",
+          "depends_on": [
+            "phase-77.task-1"
+          ],
+          "context": {
+            "files_to_read": [
+              ".cm/spec/PLAN.md"
+            ],
+            "code_style_excerpt": "C ESP-IDF style. Match existing patterns in main/core/. Use libwally helpers, not hand-rolled parsers. Tests use Unity harness under main/core/test/. New .c files must be added to main/CMakeLists.txt SRCS list in alphabetical order."
+          },
+          "plan_file": ".cm/plans/plan-78.task-1.md",
+          "roadmap_item_id": "item-78"
+        }
+      ]
+    }
+  ],
+  "current_phase": null,
+  "current_task": null,
+  "agent_history": []
+}

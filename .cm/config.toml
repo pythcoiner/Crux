@@ -1,0 +1,18 @@
+# cm configuration file
+
+# Claude model to use for agent spawning
+# Options: "claude-sonnet-4-5-20250929", "claude-opus-4-5-20251101"
+# model = "claude-sonnet-4-5-20250929"
+
+# Maximum number of fix cycles per task before deferring
+# Default: 5
+# max_cycles = 5
+
+# Working directory for build verification (relative to project root)
+# Default: "."
+# working_dir = "."
+
+# Build commands run after each phase for verification.
+# Only wave_4b during normal phases (fast, incremental). Full three-board
+# build is exercised manually in Phase 72 (device verification gate).
+build_commands = ["just build wave_4b"]
