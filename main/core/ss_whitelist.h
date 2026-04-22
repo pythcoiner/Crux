@@ -12,6 +12,14 @@ typedef enum {
   SS_SCRIPT_P2TR,          // BIP86, purpose 86 (single-key)
 } ss_script_type_t;
 
+typedef enum {
+  PSB_OK,   /* purpose matches the conventional outer script */
+  PSB_WARN, /* purpose ∈ {44,48,49,84,86} but outer script does not match */
+  PSB_NA,   /* purpose not in {44,48,49,84,86} — no convention to check */
+} psb_result_t;
+
+struct wally_descriptor; /* opaque; defined in wally_descriptor.h */
+
 typedef struct {
   ss_script_type_t script;
   uint32_t purpose;        // 44/49/84/86 (unhardened)
@@ -78,5 +86,27 @@ bool ss_scriptpubkey_with_redeem(ss_script_type_t script, uint32_t account,
 bool ss_address(ss_script_type_t script, uint32_t account,
                 uint32_t chain, uint32_t index, bool is_testnet,
                 char *address_out, size_t address_out_len);
+
+/*
+ * Returns true iff (purpose, outer_script) matches the fixed BIP convention:
+ *   44 ↔ SS_SCRIPT_P2PKH
+ *   49 ↔ SS_SCRIPT_P2SH_P2WPKH
+ *   84 ↔ SS_SCRIPT_P2WPKH
+ *   86 ↔ SS_SCRIPT_P2TR
+ * Any other combination returns false.
+ * Used by try_match_whitelist (hard enforcement — mismatch means no claim).
+ */
+bool purpose_script_binding_check_strict(uint32_t purpose,
+                                         ss_script_type_t outer_script);
+
+/*
+ * Inspects a parsed descriptor's outer script type (via canonicalisation)
+ * and the origin purpose of key[0]. Returns:
+ *   PSB_OK   — purpose matches outer script convention
+ *   PSB_WARN — purpose in {44,48,49,84,86} but outer script differs (show warning dialog)
+ *   PSB_NA   — purpose not in {44,48,49,84,86} (no convention applies)
+ * Used by the descriptor registration UI.
+ */
+psb_result_t purpose_script_binding_check_soft(const struct wally_descriptor *desc);
 
 #endif // SS_WHITELIST_H

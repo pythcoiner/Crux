@@ -6,6 +6,8 @@
 #include <wally_bip32.h>
 #include <wally_crypto.h>
 #include <wally_script.h>
+#include <stdlib.h>           /* strtoul */
+#include <wally_descriptor.h> /* wally_descriptor_canonicalize, wally_descriptor_get_key_origin_path_str */
 
 bool ss_keypath_parse(const unsigned char *keypath_after_fp,
                       size_t keypath_len_after_fp,
@@ -302,4 +304,58 @@ bool ss_address(ss_script_type_t script, uint32_t account,
   memcpy(address_out, alloc, len + 1);
   wally_free_string(alloc);
   return true;
+}
+
+bool purpose_script_binding_check_strict(uint32_t purpose,
+                                         ss_script_type_t outer_script) {
+  switch (purpose) {
+    case 44: return outer_script == SS_SCRIPT_P2PKH;
+    case 49: return outer_script == SS_SCRIPT_P2SH_P2WPKH;
+    case 84: return outer_script == SS_SCRIPT_P2WPKH;
+    case 86: return outer_script == SS_SCRIPT_P2TR;
+    default: return false;
+  }
+}
+
+psb_result_t purpose_script_binding_check_soft(const struct wally_descriptor *desc) {
+  /* Step 1: Identify outer script type via canonical string */
+  char *canon = NULL;
+  if (wally_descriptor_canonicalize(desc, WALLY_MS_CANONICAL_NO_CHECKSUM,
+                                    &canon) != WALLY_OK)
+    return PSB_NA;
+
+  bool is_pkh     = (strncmp(canon, "pkh(",     4) == 0);
+  bool is_sh_wpkh = (strncmp(canon, "sh(wpkh(", 8) == 0);
+  bool is_wpkh    = (strncmp(canon, "wpkh(",    5) == 0);
+  bool is_tr      = (strncmp(canon, "tr(",      3) == 0);
+  bool is_wsh     = (strncmp(canon, "wsh(",     4) == 0);
+  bool is_sh_wsh  = (strncmp(canon, "sh(wsh(",  7) == 0);
+  wally_free_string(canon);
+
+  /* Step 2: Parse purpose from key[0]'s origin path */
+  char *path = NULL;
+  if (wally_descriptor_get_key_origin_path_str(desc, 0, &path) != WALLY_OK
+      || !path || path[0] == '\0') {
+    wally_free_string(path);
+    return PSB_NA;
+  }
+
+  /* strtoul stops at "'" giving the unhardened purpose integer */
+  char *end = NULL;
+  unsigned long purpose_ul = strtoul(path, &end, 10);
+  bool parse_ok = (end != path);
+  wally_free_string(path);
+  if (!parse_ok || purpose_ul > 0x7FFFFFFFul)
+    return PSB_NA;
+  uint32_t purpose = (uint32_t)purpose_ul;
+
+  /* Step 3: Apply purpose ↔ outer-script convention table */
+  switch (purpose) {
+    case 44: return is_pkh                 ? PSB_OK : PSB_WARN;
+    case 48: return (is_wsh || is_sh_wsh)  ? PSB_OK : PSB_WARN;
+    case 49: return is_sh_wpkh             ? PSB_OK : PSB_WARN;
+    case 84: return is_wpkh                ? PSB_OK : PSB_WARN;
+    case 86: return is_tr                  ? PSB_OK : PSB_WARN;
+    default: return PSB_NA;
+  }
 }
