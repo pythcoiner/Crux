@@ -81,7 +81,6 @@ static bool parse_and_display_psbt(const char *base64_data);
 static void cleanup_psbt_data(void);
 static bool create_psbt_info_display(void);
 static output_type_t classify_output(size_t output_index,
-                                     const struct wally_tx *global_tx,
                                      uint32_t *address_index_out);
 static void sign_button_cb(lv_event_t *e);
 static void return_from_qr_viewer_cb(void);
@@ -172,7 +171,6 @@ static lv_obj_t *create_btc_value_row(lv_obj_t *parent, const char *prefix,
 
 // Classify output as self-transfer, change, or spend
 static output_type_t classify_output(size_t output_index,
-                                     const struct wally_tx *global_tx,
                                      uint32_t *address_index_out) {
   bool is_change = false;
   uint32_t address_index = 0;
@@ -181,23 +179,18 @@ static output_type_t classify_output(size_t output_index,
     return OUTPUT_TYPE_SPEND;
   }
 
-  if (psbt_is_multisig(current_psbt) && wallet_has_descriptor()) {
-    if (psbt_verify_output_with_descriptor(current_psbt, output_index,
-                                           global_tx, &is_change,
-                                           &address_index)) {
-      *address_index_out = address_index;
-      return is_change ? OUTPUT_TYPE_CHANGE : OUTPUT_TYPE_SELF_TRANSFER;
-    }
-    return OUTPUT_TYPE_SPEND;
-  }
-
   output_ownership_t ownership =
       psbt_classify_output(current_psbt, output_index, is_testnet);
-  if (!ownership.owned || ownership.source.kind != CLAIM_WHITELIST) {
+  if (!ownership.owned) {
     return OUTPUT_TYPE_SPEND;
   }
-  is_change     = (ownership.source.whitelist.chain == 1);
-  address_index = ownership.source.whitelist.index;
+  if (ownership.source.kind == CLAIM_WHITELIST) {
+    is_change     = (ownership.source.whitelist.chain == 1);
+    address_index = ownership.source.whitelist.index;
+  } else {
+    is_change     = (ownership.source.registry.multi_index == 1);
+    address_index = ownership.source.registry.child_num;
+  }
 
   *address_index_out = address_index;
   return is_change ? OUTPUT_TYPE_CHANGE : OUTPUT_TYPE_SELF_TRANSFER;
@@ -697,8 +690,7 @@ static bool create_psbt_info_display(void) {
         global_tx->outputs[i].script, global_tx->outputs[i].script_len,
         is_testnet);
     classified_outputs[i].type =
-        classify_output(i, global_tx,
-                        &classified_outputs[i].address_index);
+        classify_output(i, &classified_outputs[i].address_index);
   }
 
   size_t diagram_idx = 0;
