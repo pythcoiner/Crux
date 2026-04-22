@@ -38,7 +38,7 @@ typedef struct {
 typedef struct {
   uint8_t spk[34];
   size_t spk_len;
-  uint8_t redeem[64];
+  uint8_t redeem[256];
   size_t redeem_len;
   uint8_t witness[256];
   size_t witness_len;

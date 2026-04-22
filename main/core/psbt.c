@@ -136,7 +136,55 @@ bool claim_regenerate(const claim_t *claim, bool is_testnet,
         out->redeem, &out->redeem_len);
   }
 
-  return false; /* CLAIM_REGISTRY: P26 */
+  /* CLAIM_REGISTRY: generate scripts from descriptor via libwally */
+  registry_entry_t *e  = claim->registry.entry;
+  uint32_t          mi = claim->registry.multi_index;
+  uint32_t          cn = claim->registry.child_num;
+
+  /* depth=0 generation reuses the output buffer as workspace for the inner
+   * script before hashing, so it needs max(inner_script_len, spk_len) bytes.
+   * Use a 520-byte local buffer (P2SH redeem script max) then copy the SPK. */
+  uint8_t spk_work[520];
+  size_t  spk_work_len = 0;
+  if (wally_descriptor_to_script(e->desc, 0, 0, 0, mi, cn, 0,
+                                  spk_work, sizeof(spk_work),
+                                  &spk_work_len) != WALLY_OK)
+    return false;
+  if (spk_work_len > sizeof(out->spk))
+    return false;
+  memcpy(out->spk, spk_work, spk_work_len);
+  out->spk_len = spk_work_len;
+
+  size_t spk_type = 0;
+  wally_scriptpubkey_get_type(out->spk, out->spk_len, &spk_type);
+
+  if (spk_type == WALLY_SCRIPT_TYPE_P2WSH) {
+    if (wally_descriptor_to_script(e->desc, 1, 0, 0, mi, cn, 0,
+                                    out->witness, sizeof(out->witness),
+                                    &out->witness_len) != WALLY_OK)
+      return false;
+
+  } else if (spk_type == WALLY_SCRIPT_TYPE_P2SH) {
+    if (wally_descriptor_to_script(e->desc, 1, 0, 0, mi, cn, 0,
+                                    out->redeem, sizeof(out->redeem),
+                                    &out->redeem_len) != WALLY_OK)
+      return false;
+
+    /* sh(wsh(...)): if redeem is itself a P2WSH witness program,
+     * depth=2 yields the inner witness script. */
+    size_t redeem_type = 0;
+    wally_scriptpubkey_get_type(out->redeem, out->redeem_len, &redeem_type);
+    if (redeem_type == WALLY_SCRIPT_TYPE_P2WSH) {
+      if (wally_descriptor_to_script(e->desc, 2, 0, 0, mi, cn, 0,
+                                      out->witness, sizeof(out->witness),
+                                      &out->witness_len) != WALLY_OK)
+        return false;
+    }
+    /* sh(multi(...)): redeem is not P2WSH; out->witness_len stays 0. */
+  }
+  /* Other types (P2WPKH, P2TR, etc.): no inner scripts needed. */
+
+  return true;
 }
 
 static bool check_keypath_network(const unsigned char *keypath,
