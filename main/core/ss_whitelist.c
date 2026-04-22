@@ -174,7 +174,39 @@ bool ss_scriptpubkey(ss_script_type_t script, uint32_t account,
       *out_len = SS_P2SH_P2WPKH_SPK_LEN;
       return true;
     }
-    case SS_SCRIPT_P2TR:
+    case SS_SCRIPT_P2TR: {
+      ss_keypath_t kp = {
+        .script  = SS_SCRIPT_P2TR,
+        .purpose = 86,
+        .coin    = is_testnet ? 1u : 0u,
+        .account = account,
+        .chain   = chain,
+        .index   = index,
+      };
+      char path[SS_KEYPATH_FMT_MAX];
+      if (!ss_keypath_format(&kp, path, sizeof(path)))
+        return false;
+
+      struct ext_key *derived_key = NULL;
+      if (!key_get_derived_key(path, &derived_key))
+        return false;
+
+      uint8_t tweaked_pk33[EC_PUBLIC_KEY_LEN];
+      int ret = wally_ec_public_key_bip341_tweak(
+          derived_key->pub_key, EC_PUBLIC_KEY_LEN,
+          NULL, 0,
+          0,
+          tweaked_pk33, EC_PUBLIC_KEY_LEN);
+      bip32_key_free(derived_key);
+      if (ret != WALLY_OK)
+        return false;
+
+      out[0] = 0x51;                          /* OP_1 */
+      out[1] = 0x20;                          /* push 32 bytes */
+      memcpy(out + 2, tweaked_pk33 + 1, 32); /* x-only tweaked pubkey */
+      *out_len = 34;
+      return true;
+    }
     default:
       return false;
   }
