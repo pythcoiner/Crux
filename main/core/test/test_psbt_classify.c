@@ -52,6 +52,10 @@ bool             wallet_has_descriptor(void)                   { return false; }
 bool wallet_get_multisig_receive_address(uint32_t i, char **a) { (void)i; (void)a; return false; }
 bool wallet_get_multisig_change_address(uint32_t i, char **a)  { (void)i; (void)a; return false; }
 
+/* --- Settings stub: permissive signing disabled in tests --- */
+#include "core/settings.h"
+bool settings_get_permissive_signing(void) { return false; }
+
 /* --- Key: real implementation but key_get_fingerprint always returns 00000000.
  *
  * Registry tests need fingerprint 00000000 to match descriptors that use
@@ -270,6 +274,143 @@ static const uint8_t REF_SHWSH_PKH_WITNESS[] = {
 
 /* ------------------------------------------------------------------ */
 
+static struct wally_psbt *make_test_psbt(
+    const uint8_t *utxo_script, size_t utxo_script_len,
+    const uint8_t *pubkey,      size_t pubkey_len,
+    const uint8_t *kp_value,    size_t kp_value_len)
+{
+  struct wally_tx *tx = NULL;
+  if (wally_tx_init_alloc(2, 0, 1, 1, &tx) != WALLY_OK) return NULL;
+
+  uint8_t txid[32] = {0};
+  wally_tx_add_raw_input(tx, txid, sizeof(txid), 0, 0xffffffff,
+                         NULL, 0, NULL, 0);
+  uint8_t op_return[] = {0x6a};
+  wally_tx_add_raw_output(tx, 0, op_return, sizeof(op_return), 0);
+
+  struct wally_psbt *psbt = NULL;
+  if (wally_psbt_from_tx(tx, 0, 0, &psbt) != WALLY_OK) {
+    wally_tx_free(tx); return NULL;
+  }
+  wally_tx_free(tx);
+
+  struct wally_tx_output *utxo = NULL;
+  wally_tx_output_init_alloc(100000, utxo_script, utxo_script_len, &utxo);
+  wally_psbt_set_input_witness_utxo(psbt, 0, utxo);
+  wally_tx_output_free(utxo);
+
+  wally_map_add(&psbt->inputs[0].keypaths,
+                pubkey,   pubkey_len,
+                kp_value, kp_value_len);
+
+  return psbt;
+}
+
+static void test_psbt_classify_fixture_a(void) {
+  TEST("psbt_classify_input: fixture A (BIP84 verified-owned)");
+
+  struct ext_key *derived = NULL;
+  if (!key_get_derived_key("m/84'/0'/0'/0/0", &derived)) {
+    FAIL("key derivation failed"); return;
+  }
+
+  uint8_t kp_val[] = {
+    0x00,0x00,0x00,0x00,  /* fingerprint */
+    0x54,0x00,0x00,0x80,  /* 84' */
+    0x00,0x00,0x00,0x80,  /* 0'  */
+    0x00,0x00,0x00,0x80,  /* 0'  */
+    0x00,0x00,0x00,0x00,  /* 0   */
+    0x00,0x00,0x00,0x00,  /* 0   */
+  };
+
+  struct wally_psbt *psbt = make_test_psbt(
+      REF_SPK_P2WPKH, sizeof(REF_SPK_P2WPKH),
+      derived->pub_key, sizeof(derived->pub_key),
+      kp_val, sizeof(kp_val));
+  bip32_key_free(derived);
+  if (!psbt) { FAIL("make_test_psbt"); return; }
+
+  input_ownership_t r = psbt_classify_input(psbt, 0, false);
+  wally_psbt_free(psbt);
+
+  if (!r.owned)                               { FAIL("expected owned=true");           return; }
+  if (!r.verified)                            { FAIL("expected verified=true");         return; }
+  if (r.requires_ack)                         { FAIL("requires_ack must be false");     return; }
+  if (r.claim.kind != CLAIM_WHITELIST)        { FAIL("expected CLAIM_WHITELIST");       return; }
+  if (r.claim.whitelist.script != SS_SCRIPT_P2WPKH) { FAIL("wrong script type");       return; }
+  if (r.claim.whitelist.account != 0)         { FAIL("expected account 0");            return; }
+  if (r.claim.whitelist.chain != 0)           { FAIL("expected chain 0");              return; }
+  if (r.claim.whitelist.index != 0)           { FAIL("expected index 0");              return; }
+  PASS();
+}
+
+static void test_psbt_classify_fixture_d(void) {
+  TEST("psbt_classify_input: fixture D (attack -- correct keypath, wrong UTXO)");
+
+  struct ext_key *derived = NULL;
+  if (!key_get_derived_key("m/84'/0'/0'/0/0", &derived)) {
+    FAIL("key derivation failed"); return;
+  }
+
+  uint8_t kp_val[] = {
+    0x00,0x00,0x00,0x00,
+    0x54,0x00,0x00,0x80,
+    0x00,0x00,0x00,0x80,
+    0x00,0x00,0x00,0x80,
+    0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,
+  };
+
+  /* Attacker swaps the UTXO to a P2PKH output — same keypath, wrong script */
+  struct wally_psbt *psbt = make_test_psbt(
+      REF_SPK_P2PKH, sizeof(REF_SPK_P2PKH),
+      derived->pub_key, sizeof(derived->pub_key),
+      kp_val, sizeof(kp_val));
+  bip32_key_free(derived);
+  if (!psbt) { FAIL("make_test_psbt"); return; }
+
+  input_ownership_t r = psbt_classify_input(psbt, 0, false);
+  wally_psbt_free(psbt);
+
+  if (r.owned) { FAIL("must NOT be owned when UTXO script mismatches"); return; }
+  PASS();
+}
+
+static void test_psbt_classify_fixture_e(void) {
+  TEST("psbt_classify_input: fixture E (fp match, unknown path, permissive=off)");
+
+  struct ext_key *derived = NULL;
+  if (!key_get_derived_key("m/84'/0'/0'/0/0", &derived)) {
+    FAIL("key derivation failed"); return;
+  }
+
+  /* Path uses purpose 99' (0x80000063) — not in whitelist, not in registry */
+  uint8_t kp_val[] = {
+    0x00,0x00,0x00,0x00,  /* fingerprint = 00000000 (matches stub) */
+    0x63,0x00,0x00,0x80,  /* 99' = 0x80000063 LE                   */
+    0x00,0x00,0x00,0x80,  /* 0'                                    */
+    0x00,0x00,0x00,0x80,  /* 0'                                    */
+    0x00,0x00,0x00,0x00,  /* 0                                     */
+    0x00,0x00,0x00,0x00,  /* 0                                     */
+  };
+
+  struct wally_psbt *psbt = make_test_psbt(
+      REF_SPK_P2WPKH, sizeof(REF_SPK_P2WPKH),
+      derived->pub_key, sizeof(derived->pub_key),
+      kp_val, sizeof(kp_val));
+  bip32_key_free(derived);
+  if (!psbt) { FAIL("make_test_psbt"); return; }
+
+  input_ownership_t r = psbt_classify_input(psbt, 0, false);
+  wally_psbt_free(psbt);
+
+  /* seen_our_fp=true, but no whitelist/registry claim; permissive stub=false */
+  if (r.owned) { FAIL("must NOT be owned (permissive=off, unknown path)"); return; }
+  PASS();
+}
+
+/* ------------------------------------------------------------------ */
+
 static void test_registry_claim(
     const char  *test_name,
     const char  *desc_str,
@@ -381,6 +522,22 @@ int main(void) {
       REF_SHWSH_PKH_SPK,     sizeof(REF_SHWSH_PKH_SPK),
       REF_SHWSH_PKH_REDEEM,  sizeof(REF_SHWSH_PKH_REDEEM),
       REF_SHWSH_PKH_WITNESS, sizeof(REF_SHWSH_PKH_WITNESS));
+
+  printf("\n=== psbt_classify_input tests ===\n\n");
+
+  TEST("key_load_from_mnemonic (for psbt_classify)");
+  if (!key_load_from_mnemonic(TEST_MNEMONIC, "", false)) {
+    FAIL("failed to load mnemonic");
+    printf("\n=== ABORT ===\n");
+    return 1;
+  }
+  PASS();
+
+  test_psbt_classify_fixture_a();
+  test_psbt_classify_fixture_d();
+  test_psbt_classify_fixture_e();
+
+  key_unload();
 
   printf("\n=== Results: %d passed, %d failed ===\n",
          tests_passed, tests_failed);

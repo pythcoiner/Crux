@@ -1,5 +1,6 @@
 #include "psbt.h"
 #include "key.h"
+#include "settings.h"
 #include "wallet.h"
 #include <esp_log.h>
 #include <stdio.h>
@@ -185,6 +186,132 @@ bool claim_regenerate(const claim_t *claim, bool is_testnet,
   /* Other types (P2WPKH, P2TR, etc.): no inner scripts needed. */
 
   return true;
+}
+
+input_ownership_t psbt_classify_input(const struct wally_psbt *psbt, size_t i,
+                                      bool is_testnet) {
+  input_ownership_t result = {0};
+
+  unsigned char utxo_script[34];
+  size_t utxo_script_len = 0;
+  if (!psbt_input_utxo_script(psbt, i, utxo_script, sizeof(utxo_script),
+                               &utxo_script_len))
+    return result;
+
+  unsigned char our_fp[BIP32_KEY_FINGERPRINT_LEN];
+  if (!key_get_fingerprint(our_fp))
+    return result;
+
+  size_t keypaths_size = 0;
+  wally_psbt_get_input_keypaths_size(psbt, i, &keypaths_size);
+
+  bool seen_our_fp = false;
+
+  for (size_t j = 0; j < keypaths_size; j++) {
+    unsigned char keypath[MAX_KEYPATH_TOTAL_DEPTH * 4 + 4];
+    size_t keypath_len = 0;
+    if (wally_psbt_get_input_keypath(psbt, i, j, keypath, sizeof(keypath),
+                                     &keypath_len) != WALLY_OK)
+      continue;
+    if (keypath_len < BIP32_KEY_FINGERPRINT_LEN ||
+        memcmp(keypath, our_fp, BIP32_KEY_FINGERPRINT_LEN) != 0)
+      continue;
+
+    if (!seen_our_fp) {
+      seen_our_fp = true;
+      size_t copy = keypath_len <= sizeof(result.raw_keypath)
+                        ? keypath_len : sizeof(result.raw_keypath);
+      memcpy(result.raw_keypath, keypath, copy);
+      result.raw_keypath_len = copy;
+    }
+
+    /* A. Try whitelist claim */
+    claim_t claim = {0};
+    if (try_match_whitelist(keypath, keypath_len, is_testnet, &claim)) {
+      expected_scripts_t exp = {0};
+      if (claim_regenerate(&claim, is_testnet, &exp) &&
+          exp.spk_len == utxo_script_len &&
+          memcmp(exp.spk, utxo_script, utxo_script_len) == 0) {
+        bool ok = true;
+        if (exp.redeem_len > 0) {
+          unsigned char buf[256];
+          size_t psbt_len = 0, written = 0;
+          ok = wally_psbt_get_input_redeem_script_len(psbt, i, &psbt_len) == WALLY_OK &&
+               psbt_len == exp.redeem_len &&
+               wally_psbt_get_input_redeem_script(psbt, i, buf, sizeof(buf),
+                                                   &written) == WALLY_OK &&
+               written == exp.redeem_len &&
+               memcmp(buf, exp.redeem, exp.redeem_len) == 0;
+        }
+        if (ok && exp.witness_len > 0) {
+          unsigned char buf[256];
+          size_t psbt_len = 0, written = 0;
+          ok = wally_psbt_get_input_witness_script_len(psbt, i, &psbt_len) == WALLY_OK &&
+               psbt_len == exp.witness_len &&
+               wally_psbt_get_input_witness_script(psbt, i, buf, sizeof(buf),
+                                                    &written) == WALLY_OK &&
+               written == exp.witness_len &&
+               memcmp(buf, exp.witness, exp.witness_len) == 0;
+        }
+        if (ok) {
+          result.owned    = true;
+          result.verified = true;
+          result.claim    = claim;
+          return result;
+        }
+      }
+    }
+
+    /* B. Try registry claims (cursor-paginated) */
+    size_t cursor = 0;
+    while (true) {
+      memset(&claim, 0, sizeof(claim));
+      if (!try_match_registry(keypath, keypath_len, &cursor, &claim))
+        break;
+      expected_scripts_t exp = {0};
+      if (!claim_regenerate(&claim, is_testnet, &exp) ||
+          exp.spk_len != utxo_script_len ||
+          memcmp(exp.spk, utxo_script, utxo_script_len) != 0)
+        continue;
+      bool ok = true;
+      if (exp.redeem_len > 0) {
+        unsigned char buf[256];
+        size_t psbt_len = 0, written = 0;
+        ok = wally_psbt_get_input_redeem_script_len(psbt, i, &psbt_len) == WALLY_OK &&
+             psbt_len == exp.redeem_len &&
+             wally_psbt_get_input_redeem_script(psbt, i, buf, sizeof(buf),
+                                                 &written) == WALLY_OK &&
+             written == exp.redeem_len &&
+             memcmp(buf, exp.redeem, exp.redeem_len) == 0;
+      }
+      if (ok && exp.witness_len > 0) {
+        unsigned char buf[256];
+        size_t psbt_len = 0, written = 0;
+        ok = wally_psbt_get_input_witness_script_len(psbt, i, &psbt_len) == WALLY_OK &&
+             psbt_len == exp.witness_len &&
+             wally_psbt_get_input_witness_script(psbt, i, buf, sizeof(buf),
+                                                  &written) == WALLY_OK &&
+             written == exp.witness_len &&
+             memcmp(buf, exp.witness, exp.witness_len) == 0;
+      }
+      if (ok) {
+        result.owned    = true;
+        result.verified = true;
+        result.claim    = claim;
+        return result;
+      }
+    }
+  }
+
+  /* Permissive fallback: fp matched but no verifiable claim */
+  if (seen_our_fp && settings_get_permissive_signing()) {
+    result.owned        = true;
+    result.verified     = false;
+    result.requires_ack = true;
+    return result;
+  }
+
+  return result;
 }
 
 static bool check_keypath_network(const unsigned char *keypath,
