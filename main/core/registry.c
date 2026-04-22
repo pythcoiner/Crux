@@ -153,11 +153,6 @@ bool registry_add_from_string(const char *id, const char *descriptor_str,
     return false;
   }
 
-  if (persist) {
-    goto done;
-  }
-
-done:;
   registry_entry_t *e = &registry_entries[registry_len];
   memset(e, 0, sizeof *e);
   strncpy(e->id, id, REGISTRY_ID_MAX_LEN - 1);
@@ -168,6 +163,19 @@ done:;
   e->origin_path_len = origin_path_len;
   memcpy(e->origin_path, origin_path, origin_path_len * sizeof(uint32_t));
   registry_len++;
+
+  if (persist) {
+    esp_err_t err = storage_save_descriptor(loc, id,
+                                            (const uint8_t *)descriptor_str,
+                                            strlen(descriptor_str), false);
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "storage_save_descriptor failed (%d), rolling back", err);
+      wally_descriptor_free(desc);
+      memset(&registry_entries[registry_len - 1], 0, sizeof(registry_entry_t));
+      registry_len--;
+      return false;
+    }
+  }
 
   ESP_LOGI(TAG, "added '%s' (%zu entries total)", id, registry_len);
   return true;
