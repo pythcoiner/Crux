@@ -28,6 +28,48 @@ uint64_t psbt_get_input_value(const struct wally_psbt *psbt, size_t index) {
   return value;
 }
 
+bool psbt_input_utxo_script(const struct wally_psbt *psbt, size_t input_i,
+                            unsigned char *out, size_t out_cap,
+                            size_t *out_len) {
+  struct wally_tx_output *witness_utxo = NULL;
+  if (wally_psbt_get_input_witness_utxo_alloc(psbt, input_i, &witness_utxo) ==
+          WALLY_OK &&
+      witness_utxo) {
+    if (witness_utxo->script_len > out_cap) {
+      wally_tx_output_free(witness_utxo);
+      return false;
+    }
+    memcpy(out, witness_utxo->script, witness_utxo->script_len);
+    *out_len = witness_utxo->script_len;
+    wally_tx_output_free(witness_utxo);
+    return true;
+  }
+
+  struct wally_tx *tx = NULL;
+  if (wally_psbt_get_input_utxo_alloc(psbt, input_i, &tx) != WALLY_OK || !tx) {
+    return false;
+  }
+
+  uint32_t prevout_index = 0;
+  if (wally_psbt_get_input_output_index(psbt, input_i, &prevout_index) !=
+          WALLY_OK ||
+      prevout_index >= tx->num_outputs) {
+    wally_tx_free(tx);
+    return false;
+  }
+
+  size_t script_len = tx->outputs[prevout_index].script_len;
+  if (script_len > out_cap) {
+    wally_tx_free(tx);
+    return false;
+  }
+
+  memcpy(out, tx->outputs[prevout_index].script, script_len);
+  *out_len = script_len;
+  wally_tx_free(tx);
+  return true;
+}
+
 static bool check_keypath_network(const unsigned char *keypath,
                                   size_t keypath_len, bool *is_testnet) {
   if (keypath_len < 12) {
