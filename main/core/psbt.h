@@ -91,11 +91,6 @@ int32_t psbt_detect_account(const struct wally_psbt *psbt);
 char *psbt_scriptpubkey_to_address(const unsigned char *script,
                                    size_t script_len, bool is_testnet);
 
-// Verify output belongs to our wallet and extract derivation info
-bool psbt_get_output_derivation(const struct wally_psbt *psbt,
-                                size_t output_index, bool is_testnet,
-                                bool *is_change, uint32_t *address_index);
-
 // Callback for permissive-signing ACK (settings_get_permissive_signing() path).
 // Called when an input carries our fingerprint but no verifiable claim.
 // Return true to allow signing with the raw keypath; false to skip.

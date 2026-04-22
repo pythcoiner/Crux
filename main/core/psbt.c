@@ -554,62 +554,6 @@ char *psbt_scriptpubkey_to_address(const unsigned char *script,
   return address;
 }
 
-bool psbt_get_output_derivation(const struct wally_psbt *psbt,
-                                size_t output_index, bool is_testnet,
-                                bool *is_change, uint32_t *address_index) {
-  if (!psbt || !is_change || !address_index) {
-    return false;
-  }
-
-  size_t keypaths_size = 0;
-  if (wally_psbt_get_output_keypaths_size(psbt, output_index, &keypaths_size) !=
-          WALLY_OK ||
-      keypaths_size == 0) {
-    return false;
-  }
-
-  unsigned char our_fingerprint[BIP32_KEY_FINGERPRINT_LEN];
-  if (!key_get_fingerprint(our_fingerprint)) {
-    return false;
-  }
-
-  for (size_t i = 0; i < keypaths_size; i++) {
-    unsigned char keypath[100];
-    size_t keypath_len = 0;
-
-    if (wally_psbt_get_output_keypath(psbt, output_index, i, keypath,
-                                      sizeof(keypath),
-                                      &keypath_len) != WALLY_OK ||
-        keypath_len < 24) {
-      continue;
-    }
-
-    if (memcmp(keypath, our_fingerprint, BIP32_KEY_FINGERPRINT_LEN) != 0) {
-      continue;
-    }
-
-    uint32_t purpose, coin_type, account, change_val, index_val;
-    memcpy(&purpose, keypath + 4, sizeof(uint32_t));
-    memcpy(&coin_type, keypath + 8, sizeof(uint32_t));
-    memcpy(&account, keypath + 12, sizeof(uint32_t));
-    memcpy(&change_val, keypath + 16, sizeof(uint32_t));
-    memcpy(&index_val, keypath + 20, sizeof(uint32_t));
-
-    uint32_t expected_coin = is_testnet ? (0x80000000 | 1) : 0x80000000;
-    uint32_t expected_account = 0x80000000 | wallet_get_account();
-
-    if (purpose == (0x80000000 | 84) && coin_type == expected_coin &&
-        account == expected_account && !(change_val & 0x80000000) &&
-        !(index_val & 0x80000000)) {
-      *is_change = (change_val == 1);
-      *address_index = index_val;
-      return true;
-    }
-  }
-
-  return false;
-}
-
 /* Format a BIP32 path from uint32 components (hardened = high bit set) into
  * the "m/44'/0'/0'/0/5" form consumed by key_get_derived_key(). */
 static bool format_derived_path(const uint32_t *comps, size_t n,

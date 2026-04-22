@@ -81,7 +81,6 @@ static bool parse_and_display_psbt(const char *base64_data);
 static void cleanup_psbt_data(void);
 static bool create_psbt_info_display(void);
 static output_type_t classify_output(size_t output_index,
-                                     const struct wally_tx_output *tx_output,
                                      const struct wally_tx *global_tx,
                                      uint32_t *address_index_out);
 static void sign_button_cb(lv_event_t *e);
@@ -173,7 +172,6 @@ static lv_obj_t *create_btc_value_row(lv_obj_t *parent, const char *prefix,
 
 // Classify output as self-transfer, change, or spend
 static output_type_t classify_output(size_t output_index,
-                                     const struct wally_tx_output *tx_output,
                                      const struct wally_tx *global_tx,
                                      uint32_t *address_index_out) {
   bool is_change = false;
@@ -193,20 +191,13 @@ static output_type_t classify_output(size_t output_index,
     return OUTPUT_TYPE_SPEND;
   }
 
-  if (!psbt_get_output_derivation(current_psbt, output_index, is_testnet,
-                                  &is_change, &address_index)) {
+  output_ownership_t ownership =
+      psbt_classify_output(current_psbt, output_index, is_testnet);
+  if (!ownership.owned || ownership.source.kind != CLAIM_WHITELIST) {
     return OUTPUT_TYPE_SPEND;
   }
-
-  unsigned char expected_script[WALLY_WITNESSSCRIPT_MAX_LEN];
-  size_t expected_script_len;
-
-  if (!wallet_get_scriptpubkey(is_change, address_index, expected_script,
-                               &expected_script_len) ||
-      tx_output->script_len != expected_script_len ||
-      memcmp(tx_output->script, expected_script, expected_script_len) != 0) {
-    return OUTPUT_TYPE_SPEND;
-  }
+  is_change     = (ownership.source.whitelist.chain == 1);
+  address_index = ownership.source.whitelist.index;
 
   *address_index_out = address_index;
   return is_change ? OUTPUT_TYPE_CHANGE : OUTPUT_TYPE_SELF_TRANSFER;
@@ -706,7 +697,7 @@ static bool create_psbt_info_display(void) {
         global_tx->outputs[i].script, global_tx->outputs[i].script_len,
         is_testnet);
     classified_outputs[i].type =
-        classify_output(i, &global_tx->outputs[i], global_tx,
+        classify_output(i, global_tx,
                         &classified_outputs[i].address_index);
   }
 
