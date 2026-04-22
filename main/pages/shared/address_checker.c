@@ -312,6 +312,7 @@ static void perform_sweep(void) {
       int ret = wally_descriptor_to_address(reg_entry->desc, 0, mp, i, 0, &dyn);
       success = (ret == WALLY_OK) && dyn;
     } else {
+      // Fixed account: user selected it in the picker; do not iterate accounts.
       success = ss_address(ac_script_map[ac_source], ac_account, 0, i,
                            is_testnet, addr_buf, sizeof(addr_buf));
     }
@@ -341,6 +342,7 @@ static void perform_sweep(void) {
       int ret = wally_descriptor_to_address(reg_entry->desc, 0, mp, i, 0, &dyn);
       success = (ret == WALLY_OK) && dyn;
     } else {
+      // Fixed account: same rationale as receive loop above.
       success = ss_address(ac_script_map[ac_source], ac_account, 1, i,
                            is_testnet, addr_buf, sizeof(addr_buf));
     }
