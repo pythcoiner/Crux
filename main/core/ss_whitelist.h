@@ -72,4 +72,11 @@ bool ss_scriptpubkey_with_redeem(ss_script_type_t script, uint32_t account,
                                   uint8_t *spk_out, size_t *spk_len,
                                   uint8_t *redeem_out, size_t *redeem_len);
 
+/* Maximum buffer size for ss_address output (covers all script types + null). */
+#define SS_ADDRESS_MAX_LEN  75
+
+bool ss_address(ss_script_type_t script, uint32_t account,
+                uint32_t chain, uint32_t index, bool is_testnet,
+                char *address_out, size_t address_out_len);
+
 #endif // SS_WHITELIST_H

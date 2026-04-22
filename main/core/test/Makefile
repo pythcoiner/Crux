@@ -48,31 +48,38 @@ TARGET_SS_PARSE = test_ss_whitelist_parse
 SRCS_SS_WHITELISTED = test_ss_whitelist_is_whitelisted.c
 TARGET_SS_WHITELISTED = test_ss_whitelist_is_whitelisted
 
-SS_SRC = ../ss_whitelist.c ../ss_whitelist.h
+SRCS_SS_REGEN = test_ss_whitelist_regen.c
+TARGET_SS_REGEN = test_ss_whitelist_regen
 
-all: $(TARGET_DERIV) $(TARGET_SS_PARSE) $(TARGET_SS_WHITELISTED)
+SS_SRC = ../ss_whitelist.c ../ss_whitelist.h
+KEY_SRC = ../key.c ../key.h ../../utils/secure_mem.h
+KEY_STUB_SRC = stubs/key_stub.c
+
+all: $(TARGET_DERIV) $(TARGET_SS_PARSE) $(TARGET_SS_WHITELISTED) $(TARGET_SS_REGEN)
 
 $(LIBWALLY): $(WALLY_SRC)
 	$(CC) $(CFLAGS) $(WALLY_CFLAGS) -c -o combined.o $<
 	ar rcs $@ combined.o
 
-KEY_SRC = ../key.c ../key.h ../../utils/secure_mem.h
-
 $(TARGET_DERIV): $(SRCS_DERIV) $(KEY_SRC) $(LIBWALLY)
 	$(CC) $(CFLAGS) $(TEST_INCS) -o $@ $(SRCS_DERIV) $(LIBWALLY)
 
-$(TARGET_SS_PARSE): $(SRCS_SS_PARSE) $(SS_SRC)
-	$(CC) $(CFLAGS) $(TEST_INCS) -o $@ $(SRCS_SS_PARSE)
+$(TARGET_SS_PARSE): $(SRCS_SS_PARSE) $(SS_SRC) $(KEY_STUB_SRC) $(LIBWALLY)
+	$(CC) $(CFLAGS) $(TEST_INCS) -o $@ $(SRCS_SS_PARSE) $(KEY_STUB_SRC) $(LIBWALLY)
 
-$(TARGET_SS_WHITELISTED): $(SRCS_SS_WHITELISTED) $(SS_SRC)
-	$(CC) $(CFLAGS) $(TEST_INCS) -o $@ $(SRCS_SS_WHITELISTED)
+$(TARGET_SS_WHITELISTED): $(SRCS_SS_WHITELISTED) $(SS_SRC) $(KEY_STUB_SRC) $(LIBWALLY)
+	$(CC) $(CFLAGS) $(TEST_INCS) -o $@ $(SRCS_SS_WHITELISTED) $(KEY_STUB_SRC) $(LIBWALLY)
 
-run: $(TARGET_DERIV) $(TARGET_SS_PARSE) $(TARGET_SS_WHITELISTED)
+$(TARGET_SS_REGEN): $(SRCS_SS_REGEN) $(SS_SRC) $(KEY_SRC) $(LIBWALLY)
+	$(CC) $(CFLAGS) $(TEST_INCS) -o $@ $(SRCS_SS_REGEN) $(LIBWALLY)
+
+run: $(TARGET_DERIV) $(TARGET_SS_PARSE) $(TARGET_SS_WHITELISTED) $(TARGET_SS_REGEN)
 	./$(TARGET_DERIV)
 	./$(TARGET_SS_PARSE)
 	./$(TARGET_SS_WHITELISTED)
+	./$(TARGET_SS_REGEN)
 
 clean:
-	rm -f $(TARGET_DERIV) $(TARGET_SS_PARSE) $(TARGET_SS_WHITELISTED) $(LIBWALLY) combined.o
+	rm -f $(TARGET_DERIV) $(TARGET_SS_PARSE) $(TARGET_SS_WHITELISTED) $(TARGET_SS_REGEN) $(LIBWALLY) combined.o
 
 .PHONY: all run clean

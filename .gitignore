@@ -22,6 +22,7 @@ components/bbqr/test/test_miniz
 main/core/test/test_derivation_path
 main/core/test/test_ss_whitelist_parse
 main/core/test/test_ss_whitelist_is_whitelisted
+main/core/test/test_ss_whitelist_regen
 main/core/test/combined.o
 main/core/test/libwally.a
 

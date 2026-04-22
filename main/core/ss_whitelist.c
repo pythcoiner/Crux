@@ -2,6 +2,7 @@
 #include "key.h"
 #include <stdio.h>
 #include <string.h>
+#include <wally_address.h>
 #include <wally_bip32.h>
 #include <wally_crypto.h>
 #include <wally_script.h>
@@ -257,5 +258,48 @@ bool ss_scriptpubkey_with_redeem(ss_script_type_t script, uint32_t account,
   memcpy(spk_out + 2, sh20, 20);   /* 20-byte script hash */
   spk_out[22] = 0x87;              /* OP_EQUAL */
   *spk_len = SS_P2SH_P2WPKH_SPK_LEN;
+  return true;
+}
+
+bool ss_address(ss_script_type_t script, uint32_t account,
+                uint32_t chain, uint32_t index, bool is_testnet,
+                char *address_out, size_t address_out_len) {
+  uint8_t spk[34];
+  size_t  spk_len = 0;
+  if (!ss_scriptpubkey(script, account, chain, index, is_testnet, spk, &spk_len))
+    return false;
+
+  char *alloc = NULL;
+  int   ret;
+
+  switch (script) {
+    case SS_SCRIPT_P2WPKH:
+    case SS_SCRIPT_P2TR: {
+      const char *hrp = is_testnet ? "tb" : "bc";
+      ret = wally_addr_segwit_from_bytes(spk, spk_len, hrp, 0, &alloc);
+      break;
+    }
+    case SS_SCRIPT_P2PKH:
+    case SS_SCRIPT_P2SH_P2WPKH: {
+      uint32_t network = is_testnet ? WALLY_NETWORK_BITCOIN_TESTNET
+                                    : WALLY_NETWORK_BITCOIN_MAINNET;
+      ret = wally_scriptpubkey_to_address(spk, spk_len, network, &alloc);
+      break;
+    }
+    default:
+      return false;
+  }
+
+  if (ret != WALLY_OK || !alloc)
+    return false;
+
+  size_t len = strlen(alloc);
+  if (len + 1 > address_out_len) {
+    wally_free_string(alloc);
+    return false;
+  }
+
+  memcpy(address_out, alloc, len + 1);
+  wally_free_string(alloc);
   return true;
 }
