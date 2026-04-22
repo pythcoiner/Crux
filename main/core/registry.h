@@ -22,4 +22,8 @@ typedef struct {
   size_t origin_path_len;
 } registry_entry_t;
 
+size_t registry_count(void);
+const registry_entry_t *registry_get(size_t i);
+const registry_entry_t *registry_find_by_id(const char *id);
+
 #endif // REGISTRY_H
