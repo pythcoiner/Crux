@@ -409,6 +409,127 @@ static void test_psbt_classify_fixture_e(void) {
   PASS();
 }
 
+static void test_psbt_classify_fixture_b(void) {
+  TEST("psbt_classify_output: fixture B (BIP86 taproot owned + external)");
+
+  struct ext_key *derived = NULL;
+  if (!key_get_derived_key("m/86'/0'/0'/0/0", &derived)) {
+    FAIL("key derivation failed"); return;
+  }
+
+  uint8_t kp_val[] = {
+    0x00,0x00,0x00,0x00,  /* fingerprint = 00000000 (stub) */
+    0x56,0x00,0x00,0x80,  /* 86' = 0x80000056 */
+    0x00,0x00,0x00,0x80,  /* 0'  */
+    0x00,0x00,0x00,0x80,  /* 0'  */
+    0x00,0x00,0x00,0x00,  /* 0 (chain) */
+    0x00,0x00,0x00,0x00,  /* 0 (index) */
+  };
+
+  struct wally_tx *tx = NULL;
+  if (wally_tx_init_alloc(2, 0, 1, 2, &tx) != WALLY_OK) {
+    bip32_key_free(derived); FAIL("wally_tx_init_alloc"); return;
+  }
+  uint8_t txid[32] = {0};
+  wally_tx_add_raw_input(tx, txid, sizeof(txid), 0, 0xffffffff, NULL, 0, NULL, 0);
+  wally_tx_add_raw_output(tx, 50000, REF_SPK_P2TR,  sizeof(REF_SPK_P2TR),  0); /* output 0: ours */
+  wally_tx_add_raw_output(tx, 49000, REF_SPK_P2PKH, sizeof(REF_SPK_P2PKH), 0); /* output 1: external */
+
+  struct wally_psbt *psbt = NULL;
+  if (wally_psbt_from_tx(tx, 0, 0, &psbt) != WALLY_OK) {
+    wally_tx_free(tx); bip32_key_free(derived); FAIL("wally_psbt_from_tx"); return;
+  }
+  wally_tx_free(tx);
+
+  uint8_t op_return[] = {0x6a};
+  struct wally_tx_output *utxo = NULL;
+  wally_tx_output_init_alloc(100000, op_return, sizeof(op_return), &utxo);
+  wally_psbt_set_input_witness_utxo(psbt, 0, utxo);
+  wally_tx_output_free(utxo);
+
+  wally_map_add(&psbt->outputs[0].keypaths,
+                derived->pub_key, sizeof(derived->pub_key),
+                kp_val, sizeof(kp_val));
+  bip32_key_free(derived);
+  /* output 1: no keypath added — external destination */
+
+  output_ownership_t r0 = psbt_classify_output(psbt, 0, false);
+  if (!r0.owned)                                      { FAIL("output 0: expected owned=true");        wally_psbt_free(psbt); return; }
+  if (r0.source.kind != CLAIM_WHITELIST)              { FAIL("output 0: expected CLAIM_WHITELIST");   wally_psbt_free(psbt); return; }
+  if (r0.source.whitelist.script != SS_SCRIPT_P2TR)   { FAIL("output 0: wrong script type");          wally_psbt_free(psbt); return; }
+  if (r0.source.whitelist.account != 0)               { FAIL("output 0: wrong account");             wally_psbt_free(psbt); return; }
+
+  output_ownership_t r1 = psbt_classify_output(psbt, 1, false);
+  if (r1.owned) { FAIL("output 1: must NOT be owned (external)"); wally_psbt_free(psbt); return; }
+
+  wally_psbt_free(psbt);
+  PASS();
+}
+
+static void test_psbt_classify_fixture_c(void) {
+  TEST("psbt_classify_output: fixture C (WSH sortedmulti registry)");
+
+  registry_clear();
+  if (!registry_add_from_string("u",
+      "wsh(sortedmulti(2,"
+      "[00000000/48'/0'/0'/2']" XPUB_84 "/0/*,"
+      "[11111111/48'/0'/0'/2']" XPUB_86 "/0/*"
+      "))#6nfc46dh",
+      STORAGE_FLASH, false)) {
+    FAIL("registry_add_from_string"); return;
+  }
+
+  uint8_t kp_val[] = {
+    0x00,0x00,0x00,0x00,  /* fingerprint = 00000000 (stub) */
+    0x30,0x00,0x00,0x80,  /* 48' = 0x80000030 */
+    0x00,0x00,0x00,0x80,  /* 0'  */
+    0x00,0x00,0x00,0x80,  /* 0'  */
+    0x02,0x00,0x00,0x80,  /* 2'  */
+    0x00,0x00,0x00,0x00,  /* 0 (multi_index) */
+    0x00,0x00,0x00,0x00,  /* 0 (child_num) */
+  };
+
+  struct ext_key *derived = NULL;
+  if (!key_get_derived_key("m/48'/0'/0'/2'/0/0", &derived)) {
+    FAIL("key derivation failed"); registry_clear(); return;
+  }
+
+  struct wally_tx *tx = NULL;
+  if (wally_tx_init_alloc(2, 0, 1, 1, &tx) != WALLY_OK) {
+    bip32_key_free(derived); registry_clear(); FAIL("wally_tx_init_alloc"); return;
+  }
+  uint8_t txid[32] = {0};
+  wally_tx_add_raw_input(tx, txid, sizeof(txid), 0, 0xffffffff, NULL, 0, NULL, 0);
+  wally_tx_add_raw_output(tx, 50000, REF_WSH_SPK, sizeof(REF_WSH_SPK), 0);
+
+  struct wally_psbt *psbt = NULL;
+  if (wally_psbt_from_tx(tx, 0, 0, &psbt) != WALLY_OK) {
+    wally_tx_free(tx); bip32_key_free(derived); registry_clear(); FAIL("wally_psbt_from_tx"); return;
+  }
+  wally_tx_free(tx);
+
+  uint8_t op_return[] = {0x6a};
+  struct wally_tx_output *utxo = NULL;
+  wally_tx_output_init_alloc(100000, op_return, sizeof(op_return), &utxo);
+  wally_psbt_set_input_witness_utxo(psbt, 0, utxo);
+  wally_tx_output_free(utxo);
+
+  wally_map_add(&psbt->outputs[0].keypaths,
+                derived->pub_key, sizeof(derived->pub_key),
+                kp_val, sizeof(kp_val));
+  bip32_key_free(derived);
+
+  output_ownership_t r = psbt_classify_output(psbt, 0, false);
+  wally_psbt_free(psbt);
+  registry_clear();
+
+  if (!r.owned)                           { FAIL("expected owned=true");      return; }
+  if (r.source.kind != CLAIM_REGISTRY)    { FAIL("expected CLAIM_REGISTRY");  return; }
+  if (r.source.registry.multi_index != 0) { FAIL("wrong multi_index");        return; }
+  if (r.source.registry.child_num != 0)   { FAIL("wrong child_num");          return; }
+  PASS();
+}
+
 /* ------------------------------------------------------------------ */
 
 static void test_registry_claim(
@@ -536,6 +657,11 @@ int main(void) {
   test_psbt_classify_fixture_a();
   test_psbt_classify_fixture_d();
   test_psbt_classify_fixture_e();
+
+  printf("\n=== psbt_classify_output tests ===\n\n");
+
+  test_psbt_classify_fixture_b();
+  test_psbt_classify_fixture_c();
 
   key_unload();
 

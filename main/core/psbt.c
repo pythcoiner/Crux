@@ -314,6 +314,75 @@ input_ownership_t psbt_classify_input(const struct wally_psbt *psbt, size_t i,
   return result;
 }
 
+output_ownership_t psbt_classify_output(const struct wally_psbt *psbt, size_t i,
+                                        bool is_testnet) {
+  output_ownership_t result = {0};
+
+  struct wally_tx *global_tx = NULL;
+  if (wally_psbt_get_global_tx_alloc(psbt, &global_tx) != WALLY_OK || !global_tx)
+    return result;
+
+  if (i >= global_tx->num_outputs) {
+    wally_tx_free(global_tx);
+    return result;
+  }
+
+  const unsigned char *out_script     = global_tx->outputs[i].script;
+  size_t               out_script_len = global_tx->outputs[i].script_len;
+
+  unsigned char our_fp[BIP32_KEY_FINGERPRINT_LEN];
+  if (!key_get_fingerprint(our_fp)) {
+    wally_tx_free(global_tx);
+    return result;
+  }
+
+  size_t keypaths_size = 0;
+  wally_psbt_get_output_keypaths_size(psbt, i, &keypaths_size);
+
+  for (size_t j = 0; j < keypaths_size; j++) {
+    unsigned char keypath[MAX_KEYPATH_TOTAL_DEPTH * 4 + 4];
+    size_t keypath_len = 0;
+    if (wally_psbt_get_output_keypath(psbt, i, j, keypath, sizeof(keypath),
+                                      &keypath_len) != WALLY_OK)
+      continue;
+    if (keypath_len < BIP32_KEY_FINGERPRINT_LEN ||
+        memcmp(keypath, our_fp, BIP32_KEY_FINGERPRINT_LEN) != 0)
+      continue;
+
+    claim_t claim = {0};
+    if (try_match_whitelist(keypath, keypath_len, is_testnet, &claim)) {
+      expected_scripts_t exp = {0};
+      if (claim_regenerate(&claim, is_testnet, &exp) &&
+          exp.spk_len == out_script_len &&
+          memcmp(exp.spk, out_script, out_script_len) == 0) {
+        result.owned  = true;
+        result.source = claim;
+        wally_tx_free(global_tx);
+        return result;
+      }
+    }
+
+    size_t cursor = 0;
+    while (true) {
+      memset(&claim, 0, sizeof(claim));
+      if (!try_match_registry(keypath, keypath_len, &cursor, &claim))
+        break;
+      expected_scripts_t exp = {0};
+      if (claim_regenerate(&claim, is_testnet, &exp) &&
+          exp.spk_len == out_script_len &&
+          memcmp(exp.spk, out_script, out_script_len) == 0) {
+        result.owned  = true;
+        result.source = claim;
+        wally_tx_free(global_tx);
+        return result;
+      }
+    }
+  }
+
+  wally_tx_free(global_tx);
+  return result;
+}
+
 static bool check_keypath_network(const unsigned char *keypath,
                                   size_t keypath_len, bool *is_testnet) {
   if (keypath_len < 12) {
