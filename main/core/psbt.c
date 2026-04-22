@@ -772,36 +772,3 @@ struct wally_psbt *psbt_trim(const struct wally_psbt *psbt) {
   return trimmed;
 }
 
-bool psbt_is_multisig(const struct wally_psbt *psbt) {
-  if (!psbt) {
-    return false;
-  }
-
-  size_t num_inputs = 0;
-  if (wally_psbt_get_num_inputs(psbt, &num_inputs) != WALLY_OK ||
-      num_inputs == 0) {
-    return false;
-  }
-
-  // Check first input for multisig indicators
-  for (size_t i = 0; i < num_inputs; i++) {
-    // Check for witness script (P2WSH - used by native segwit multisig)
-    size_t witness_script_len = 0;
-    bool has_witness_script = (wally_psbt_get_input_witness_script_len(
-                                   psbt, i, &witness_script_len) == WALLY_OK &&
-                               witness_script_len > 0);
-
-    // Check for multiple keypaths (indicates multiple signers)
-    size_t keypaths_size = 0;
-    bool has_multiple_keypaths = (wally_psbt_get_input_keypaths_size(
-                                      psbt, i, &keypaths_size) == WALLY_OK &&
-                                  keypaths_size > 1);
-
-    // Multisig if has witness script AND multiple keypaths
-    if (has_witness_script && has_multiple_keypaths) {
-      return true;
-    }
-  }
-
-  return false;
-}

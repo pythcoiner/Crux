@@ -107,8 +107,5 @@ size_t psbt_sign(struct wally_psbt *psbt, bool is_testnet, psbt_sign_ack_fn_t ac
 // Returns new PSBT on success (caller must free), NULL on failure
 struct wally_psbt *psbt_trim(const struct wally_psbt *psbt);
 
-// Check if PSBT is a multisig transaction
-// Returns true if any input has witness script and multiple keypaths
-bool psbt_is_multisig(const struct wally_psbt *psbt);
 
 #endif // PSBT_H

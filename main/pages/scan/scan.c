@@ -377,7 +377,25 @@ static void return_from_qr_scanner_cb(void) {
     } else {
       scanned_qr_format = detected_format;
 
-      if (psbt_is_multisig(current_psbt) && !wallet_has_descriptor()) {
+      bool has_registry_input = false;
+      {
+        size_t num_inputs = 0;
+        if (wally_psbt_get_num_inputs(current_psbt, &num_inputs) == WALLY_OK) {
+          for (size_t i = 0; i < num_inputs; i++) {
+            input_ownership_t own =
+                psbt_classify_input(current_psbt, i, is_testnet);
+            if (own.claim.kind == CLAIM_REGISTRY) {
+              has_registry_input = true;
+              break;
+            }
+          }
+        }
+      }
+      if (has_registry_input) {
+        if (!create_psbt_info_display()) {
+          dialog_show_error("Invalid PSBT data", return_callback, 0);
+        }
+      } else if (!wallet_has_descriptor()) {
         show_multisig_options_menu();
       } else {
         if (!create_psbt_info_display()) {
