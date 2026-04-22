@@ -70,6 +70,56 @@ bool psbt_input_utxo_script(const struct wally_psbt *psbt, size_t input_i,
   return true;
 }
 
+bool try_match_whitelist(const unsigned char *keypath, size_t keypath_len,
+                         bool is_testnet, claim_t *claim_out) {
+  if (keypath_len != 4 + 5 * 4)
+    return false;
+
+  ss_keypath_t kp;
+  if (!ss_keypath_parse(keypath + 4, keypath_len - 4, &kp))
+    return false;
+
+  if (!ss_keypath_is_whitelisted(&kp, is_testnet))
+    return false;
+
+  claim_out->kind = CLAIM_WHITELIST;
+  claim_out->whitelist.script  = kp.script;
+  claim_out->whitelist.purpose = kp.purpose;
+  claim_out->whitelist.coin    = kp.coin;
+  claim_out->whitelist.account = kp.account;
+  claim_out->whitelist.chain   = kp.chain;
+  claim_out->whitelist.index   = kp.index;
+
+  claim_out->derived_path_len = 5;
+  for (size_t i = 0; i < 5; i++)
+    claim_out->derived_path[i] = ss_u32_le(keypath + 4 + i * 4);
+
+  return true;
+}
+
+bool try_match_registry(const unsigned char *keypath, size_t keypath_len,
+                        size_t *cursor, claim_t *claim_out) {
+  registry_entry_t *entry = registry_match_keypath(keypath, keypath_len, cursor);
+  if (!entry)
+    return false;
+
+  size_t origin_len = entry->origin_path_len;
+  uint32_t mp = ss_u32_le(keypath + 4 + origin_len * 4);
+  uint32_t ix = ss_u32_le(keypath + 4 + (origin_len + 1) * 4);
+
+  claim_out->kind = CLAIM_REGISTRY;
+  claim_out->registry.entry       = entry;
+  claim_out->registry.multi_index = mp;
+  claim_out->registry.child_num   = ix;
+
+  size_t total_depth = (keypath_len - 4) / 4;
+  claim_out->derived_path_len = total_depth;
+  for (size_t i = 0; i < total_depth; i++)
+    claim_out->derived_path[i] = ss_u32_le(keypath + 4 + i * 4);
+
+  return true;
+}
+
 static bool check_keypath_network(const unsigned char *keypath,
                                   size_t keypath_len, bool *is_testnet) {
   if (keypath_len < 12) {
