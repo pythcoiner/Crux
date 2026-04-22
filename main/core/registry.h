@@ -1,6 +1,7 @@
 #ifndef REGISTRY_H
 #define REGISTRY_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -25,6 +26,8 @@ typedef struct {
 size_t registry_count(void);
 const registry_entry_t *registry_get(size_t i);
 const registry_entry_t *registry_find_by_id(const char *id);
+bool registry_add_from_string(const char *id, const char *descriptor_str,
+                              storage_location_t loc, bool persist);
 void registry_clear(void);
 
 #endif // REGISTRY_H

@@ -1,5 +1,14 @@
 #include "registry.h"
+#include "key.h"
+#include "wallet.h"
+#include <esp_log.h>
 #include <string.h>
+#include <stdlib.h>
+#include <wally_address.h>
+#include <wally_bip32.h>
+#include <wally_descriptor.h>
+
+static const char *TAG = "registry";
 
 static registry_entry_t registry_entries[REGISTRY_MAX_ENTRIES];
 static size_t registry_len = 0;
@@ -30,4 +39,136 @@ void registry_clear(void) {
   }
   memset(registry_entries, 0, sizeof registry_entries);
   registry_len = 0;
+}
+
+// Convert an origin path string like "84'/0'/0'" to uint32_t[]
+// Returns false on overflow, invalid chars, or depth > max_depth.
+static bool parse_origin_path_str(const char *path, uint32_t *out,
+                                  size_t *depth_out, size_t max_depth) {
+  if (!path || !out || !depth_out) return false;
+  size_t depth = 0;
+  const char *p = path;
+  while (*p && depth < max_depth) {
+    if (*p < '0' || *p > '9') return false;
+    uint32_t v = 0;
+    bool has_digit = false;
+    while (*p >= '0' && *p <= '9') {
+      uint32_t d = (uint32_t)(*p - '0');
+      if (v > UINT32_MAX / 10 || (v == UINT32_MAX / 10 && d > UINT32_MAX % 10))
+        return false;
+      v = v * 10 + d;
+      p++;
+      has_digit = true;
+    }
+    if (!has_digit) return false;
+    if (*p == '\'' || *p == 'h') {
+      if (v >= BIP32_INITIAL_HARDENED_CHILD) return false;
+      v |= BIP32_INITIAL_HARDENED_CHILD;
+      p++;
+    }
+    out[depth++] = v;
+    if (*p == '/') { p++; if (!*p) return false; }
+    else if (*p == '\0') break;
+    else return false;
+  }
+  if (*p != '\0') return false;
+  *depth_out = depth;
+  return true;
+}
+
+bool registry_add_from_string(const char *id, const char *descriptor_str,
+                              storage_location_t loc, bool persist) {
+  if (!id || !descriptor_str) return false;
+  if (registry_len >= REGISTRY_MAX_ENTRIES) {
+    ESP_LOGE(TAG, "registry full (%d entries)", REGISTRY_MAX_ENTRIES);
+    return false;
+  }
+
+  uint32_t wally_network = (wallet_get_network() == WALLET_NETWORK_MAINNET)
+                               ? WALLY_NETWORK_BITCOIN_MAINNET
+                               : WALLY_NETWORK_BITCOIN_TESTNET;
+  struct wally_descriptor *desc = NULL;
+  int ret = wally_descriptor_parse(descriptor_str, NULL, wally_network, 0, &desc);
+  if (ret != WALLY_OK) {
+    wally_network = (wally_network == WALLY_NETWORK_BITCOIN_MAINNET)
+                        ? WALLY_NETWORK_BITCOIN_TESTNET
+                        : WALLY_NETWORK_BITCOIN_MAINNET;
+    ret = wally_descriptor_parse(descriptor_str, NULL, wally_network, 0, &desc);
+  }
+  if (ret != WALLY_OK) {
+    ESP_LOGE(TAG, "failed to parse descriptor: %d", ret);
+    return false;
+  }
+
+  unsigned char wallet_fp[BIP32_KEY_FINGERPRINT_LEN];
+  if (!key_get_fingerprint(wallet_fp)) {
+    ESP_LOGE(TAG, "key_get_fingerprint failed");
+    wally_descriptor_free(desc);
+    return false;
+  }
+  uint32_t num_keys = 0;
+  if (wally_descriptor_get_num_keys(desc, &num_keys) != WALLY_OK) {
+    wally_descriptor_free(desc);
+    return false;
+  }
+  int key_index = -1;
+  for (uint32_t i = 0; i < num_keys; i++) {
+    unsigned char kfp[BIP32_KEY_FINGERPRINT_LEN];
+    if (wally_descriptor_get_key_origin_fingerprint(desc, i, kfp,
+                                                    BIP32_KEY_FINGERPRINT_LEN) == WALLY_OK &&
+        memcmp(wallet_fp, kfp, BIP32_KEY_FINGERPRINT_LEN) == 0) {
+      key_index = (int)i;
+      break;
+    }
+  }
+  if (key_index < 0) {
+    ESP_LOGW(TAG, "wallet fingerprint not found in descriptor '%s'", id);
+    wally_descriptor_free(desc);
+    return false;
+  }
+
+  char *path_str = NULL;
+  uint32_t origin_path[MAX_KEYPATH_ORIGIN_DEPTH];
+  size_t origin_path_len = 0;
+  if (wally_descriptor_get_key_origin_path_str(desc, (uint32_t)key_index,
+                                               &path_str) != WALLY_OK ||
+      !path_str) {
+    ESP_LOGE(TAG, "failed to get origin path for key %d", key_index);
+    wally_descriptor_free(desc);
+    return false;
+  }
+  bool path_ok = parse_origin_path_str(path_str, origin_path,
+                                       &origin_path_len,
+                                       MAX_KEYPATH_ORIGIN_DEPTH);
+  wally_free_string(path_str);
+  if (!path_ok) {
+    ESP_LOGE(TAG, "failed to parse origin path for key %d", key_index);
+    wally_descriptor_free(desc);
+    return false;
+  }
+
+  uint32_t num_paths = 0;
+  if (wally_descriptor_get_num_paths(desc, &num_paths) != WALLY_OK) {
+    wally_descriptor_free(desc);
+    return false;
+  }
+
+  if (persist) {
+    goto done;
+  }
+
+done:;
+  registry_entry_t *e = &registry_entries[registry_len];
+  memset(e, 0, sizeof *e);
+  strncpy(e->id, id, REGISTRY_ID_MAX_LEN - 1);
+  e->loc             = loc;
+  e->desc            = desc;
+  e->my_key_index    = (size_t)key_index;
+  e->num_paths       = (size_t)num_paths;
+  e->origin_path_len = origin_path_len;
+  memcpy(e->origin_path, origin_path, origin_path_len * sizeof(uint32_t));
+  registry_len++;
+
+  ESP_LOGI(TAG, "added '%s' (%zu entries total)", id, registry_len);
+  return true;
 }
