@@ -25,3 +25,25 @@ esp_err_t storage_delete_descriptor(storage_location_t loc,
   (void)loc; (void)filename;
   return ESP_OK;
 }
+
+esp_err_t storage_list_descriptors(storage_location_t loc,
+                                    char ***filenames_out, int *count_out) {
+  (void)loc;
+  if (filenames_out) *filenames_out = NULL;
+  if (count_out) *count_out = 0;
+  return ESP_OK;
+}
+
+esp_err_t storage_load_descriptor(storage_location_t loc, const char *filename,
+                                   uint8_t **data_out, size_t *len_out,
+                                   bool *encrypted_out) {
+  (void)loc; (void)filename;
+  if (data_out) *data_out = NULL;
+  if (len_out) *len_out = 0;
+  if (encrypted_out) *encrypted_out = false;
+  return -1;
+}
+
+void storage_free_file_list(char **files, int count) {
+  (void)files; (void)count;
+}
