@@ -46,25 +46,6 @@ esp_err_t settings_set_default_network(wallet_network_t network) {
   return nvs_commit(settings_nvs);
 }
 
-wallet_policy_t settings_get_default_policy(void) {
-  if (!initialized)
-    return WALLET_POLICY_SINGLESIG;
-  uint8_t val = 0;
-  if (nvs_get_u8(settings_nvs, KEY_DEFAULT_POL, &val) != ESP_OK)
-    return WALLET_POLICY_SINGLESIG;
-  return (val <= WALLET_POLICY_MULTISIG) ? (wallet_policy_t)val
-                                         : WALLET_POLICY_SINGLESIG;
-}
-
-esp_err_t settings_set_default_policy(wallet_policy_t policy) {
-  if (!initialized)
-    return ESP_ERR_INVALID_STATE;
-  esp_err_t err = nvs_set_u8(settings_nvs, KEY_DEFAULT_POL, (uint8_t)policy);
-  if (err != ESP_OK)
-    return err;
-  return nvs_commit(settings_nvs);
-}
-
 uint8_t settings_get_brightness(void) {
   if (!initialized)
     return 50;
