@@ -8,7 +8,6 @@
 static const char *TAG = "SETTINGS";
 static const char *NVS_NAMESPACE = "settings";
 static const char *KEY_DEFAULT_NET = "def_net";
-static const char *KEY_DEFAULT_POL = "def_pol";
 static const char *KEY_BRIGHTNESS = "bright";
 static const char *KEY_AE_TARGET = "ae_tgt";
 static const char *KEY_FOCUS_POS = "focus";
