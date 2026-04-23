@@ -9,27 +9,6 @@
 static bool wallet_initialized = false;
 static wallet_network_t wallet_network = WALLET_NETWORK_MAINNET;
 
-int wallet_format_derivation_path(char *buf, size_t buf_size,
-                                  bool is_multisig,
-                                  wallet_network_t network, uint32_t account) {
-  uint32_t coin = (network == WALLET_NETWORK_MAINNET) ? 0 : 1;
-  if (is_multisig) {
-    return snprintf(buf, buf_size, "m/48'/%u'/%u'/2'", coin, account);
-  }
-  return snprintf(buf, buf_size, "m/84'/%u'/%u'", coin, account);
-}
-
-int wallet_format_derivation_compact(char *buf, size_t buf_size,
-                                     bool is_multisig,
-                                     wallet_network_t network,
-                                     uint32_t account) {
-  uint32_t coin = (network == WALLET_NETWORK_MAINNET) ? 0 : 1;
-  if (is_multisig) {
-    return snprintf(buf, buf_size, "48h/%uh/%uh/2h", coin, account);
-  }
-  return snprintf(buf, buf_size, "84h/%uh/%uh", coin, account);
-}
-
 bool wallet_init(wallet_network_t network) {
   wallet_network = network;
   wallet_initialized = true;
