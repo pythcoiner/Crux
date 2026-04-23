@@ -425,45 +425,6 @@ static void verify_xpub_and_show_info(void) {
   }
 }
 
-// Apply settings changes and verify xpub
-static void apply_changes_and_verify(void) {
-  if (!current_ctx) {
-    return;
-  }
-
-  // Get current mnemonic for reinit
-  char *mnemonic = NULL;
-  if (!key_get_mnemonic(&mnemonic)) {
-    ESP_LOGE(TAG, "Failed to get mnemonic");
-    complete_validation(VALIDATION_INTERNAL_ERROR);
-    return;
-  }
-
-  bool is_testnet = (current_ctx->target_network == WALLET_NETWORK_TESTNET);
-
-  // Perform wallet reinit with new settings
-  wallet_cleanup();
-  wallet_set_account(current_ctx->target_account);
-  wallet_set_policy(current_ctx->target_policy);
-
-  // Reload key - passphrase is already applied in current key
-  if (!key_load_from_mnemonic(mnemonic, NULL, is_testnet)) {
-    ESP_LOGE(TAG, "Failed to reload key");
-    free(mnemonic);
-    complete_validation(VALIDATION_INTERNAL_ERROR);
-    return;
-  }
-  free(mnemonic);
-
-  if (!wallet_init(current_ctx->target_network)) {
-    ESP_LOGE(TAG, "Failed to reinit wallet");
-    complete_validation(VALIDATION_INTERNAL_ERROR);
-    return;
-  }
-
-  verify_xpub_and_show_info();
-}
-
 // Callback for attribute change confirmation dialog
 static void attribute_change_confirm_cb(bool confirmed, void *user_data) {
   (void)user_data;
@@ -473,7 +434,7 @@ static void attribute_change_confirm_cb(bool confirmed, void *user_data) {
     return;
   }
 
-  apply_changes_and_verify();
+  verify_xpub_and_show_info();
 }
 
 // Stage 2 & 3: Check attributes and verify xpub
