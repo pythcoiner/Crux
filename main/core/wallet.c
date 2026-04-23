@@ -90,13 +90,13 @@ bool wallet_get_account_xpub(char **xpub_out) {
   return (ret == WALLY_OK);
 }
 
-// chain: 0 = receive, 1 = change
-static bool derive_address(uint32_t chain, uint32_t index, char **address_out) {
-  if (!wallet_initialized || !account_key || chain > 1) {
+
+bool wallet_get_receive_address(uint32_t index, char **address_out) {
+  if (!wallet_initialized || !account_key || !address_out) {
     return false;
   }
 
-  uint32_t chain_path[1] = {chain};
+  uint32_t chain_path[1] = {0};
   struct ext_key *chain_key = NULL;
   int ret = bip32_key_from_parent_path_alloc(
       account_key, chain_path, 1, BIP32_FLAG_KEY_PRIVATE, &chain_key);
@@ -131,18 +131,44 @@ static bool derive_address(uint32_t chain, uint32_t index, char **address_out) {
   return (ret == WALLY_OK);
 }
 
-bool wallet_get_receive_address(uint32_t index, char **address_out) {
-  if (!address_out) {
-    return false;
-  }
-  return derive_address(0, index, address_out);
-}
-
 bool wallet_get_change_address(uint32_t index, char **address_out) {
-  if (!address_out) {
+  if (!wallet_initialized || !account_key || !address_out) {
     return false;
   }
-  return derive_address(1, index, address_out);
+
+  uint32_t chain_path[1] = {1};
+  struct ext_key *chain_key = NULL;
+  int ret = bip32_key_from_parent_path_alloc(
+      account_key, chain_path, 1, BIP32_FLAG_KEY_PRIVATE, &chain_key);
+  if (ret != WALLY_OK) {
+    return false;
+  }
+
+  uint32_t addr_path[1] = {index};
+  struct ext_key *addr_key = NULL;
+  ret = bip32_key_from_parent_path_alloc(chain_key, addr_path, 1,
+                                         BIP32_FLAG_KEY_PUBLIC, &addr_key);
+  bip32_key_free(chain_key);
+
+  if (ret != WALLY_OK) {
+    return false;
+  }
+
+  unsigned char script[WALLY_WITNESSSCRIPT_MAX_LEN];
+  size_t script_len;
+
+  ret = wally_witness_program_from_bytes(addr_key->pub_key, EC_PUBLIC_KEY_LEN,
+                                         WALLY_SCRIPT_HASH160, script,
+                                         sizeof(script), &script_len);
+  bip32_key_free(addr_key);
+
+  if (ret != WALLY_OK) {
+    return false;
+  }
+
+  const char *hrp = (wallet_network == WALLET_NETWORK_MAINNET) ? "bc" : "tb";
+  ret = wally_addr_segwit_from_bytes(script, script_len, hrp, 0, address_out);
+  return (ret == WALLY_OK);
 }
 
 // Get scriptPubKey for a wallet address
@@ -375,39 +401,31 @@ bool wallet_get_descriptor_checksum(char **output) {
   return (*output != NULL);
 }
 
-// Multisig address generation using loaded descriptor
-// multi_index: 0 = receive, 1 = change (for descriptors with <0;1> multipath)
-static bool derive_multisig_address(uint32_t multi_index, uint32_t child_num,
-                                    char **address_out) {
+
+bool wallet_get_multisig_receive_address(uint32_t index, char **address_out) {
   if (!loaded_descriptor || !address_out) {
     return false;
   }
 
-  // Check how many paths the descriptor has
+  int ret = wally_descriptor_to_address(loaded_descriptor, 0, 0, index, 0,
+                                        address_out);
+  return (ret == WALLY_OK);
+}
+
+bool wallet_get_multisig_change_address(uint32_t index, char **address_out) {
+  if (!loaded_descriptor || !address_out) {
+    return false;
+  }
+
   uint32_t num_paths = 0;
   int ret = wally_descriptor_get_num_paths(loaded_descriptor, &num_paths);
   if (ret != WALLY_OK) {
     return false;
   }
 
-  // If descriptor only has 1 path (no multipath), force multi_index to 0
-  uint32_t actual_multi_index = (num_paths <= 1) ? 0 : multi_index;
+  uint32_t multi_index = (num_paths <= 1) ? 0 : 1;
 
-  ret = wally_descriptor_to_address(loaded_descriptor, 0, actual_multi_index,
-                                    child_num, 0, address_out);
+  ret = wally_descriptor_to_address(loaded_descriptor, 0, multi_index, index,
+                                    0, address_out);
   return (ret == WALLY_OK);
-}
-
-bool wallet_get_multisig_receive_address(uint32_t index, char **address_out) {
-  if (!address_out) {
-    return false;
-  }
-  return derive_multisig_address(0, index, address_out);
-}
-
-bool wallet_get_multisig_change_address(uint32_t index, char **address_out) {
-  if (!address_out) {
-    return false;
-  }
-  return derive_multisig_address(1, index, address_out);
 }
