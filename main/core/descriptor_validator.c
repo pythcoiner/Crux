@@ -10,6 +10,9 @@
 #include <wally_core.h>
 #include <wally_descriptor.h>
 
+#include "registry.h"
+#include "storage.h"
+
 static const char *TAG = "descriptor_validator";
 
 typedef struct {
@@ -17,6 +20,7 @@ typedef struct {
   validation_complete_cb callback;
   validation_confirm_cb confirm_cb;
   validation_info_confirm_cb info_confirm_cb;
+  validation_id_loc_cb id_loc_cb;
   void *user_data;
   wallet_network_t target_network;
   wallet_policy_t target_policy;
@@ -259,6 +263,21 @@ static bool extract_descriptor_info(struct wally_descriptor *descriptor,
   return true;
 }
 
+static void id_loc_proceed(const char *id, storage_location_t loc,
+                           void *user_data) {
+  (void)user_data;
+  if (!id || strlen(id) == 0) {
+    complete_validation(VALIDATION_USER_DECLINED);
+    return;
+  }
+  if (!registry_add_from_string(id, current_ctx->descriptor_str, loc, true)) {
+    ESP_LOGE(TAG, "Failed to register descriptor '%s'", id);
+    complete_validation(VALIDATION_INTERNAL_ERROR);
+    return;
+  }
+  complete_validation(VALIDATION_SUCCESS);
+}
+
 // Callback after user confirms/declines descriptor info
 static void info_confirm_proceed(bool confirmed, void *user_data) {
   (void)user_data;
@@ -268,13 +287,12 @@ static void info_confirm_proceed(bool confirmed, void *user_data) {
     return;
   }
 
-  if (!wallet_load_descriptor(current_ctx->descriptor_str)) {
-    ESP_LOGE(TAG, "Failed to load descriptor");
-    complete_validation(VALIDATION_INTERNAL_ERROR);
-    return;
+  if (current_ctx->id_loc_cb) {
+    current_ctx->id_loc_cb(id_loc_proceed, NULL);
+  } else {
+    // Headless / test path: no interactive prompt available.
+    id_loc_proceed("default", STORAGE_FLASH, NULL);
   }
-
-  complete_validation(VALIDATION_SUCCESS);
 }
 
 // Re-parse descriptor, verify xpub matches wallet, extract info, and show it.
@@ -495,6 +513,7 @@ void descriptor_validate_and_load(const char *descriptor_str,
                                   validation_complete_cb callback,
                                   validation_confirm_cb confirm_cb,
                                   validation_info_confirm_cb info_confirm_cb,
+                                  validation_id_loc_cb id_loc_cb,
                                   void *user_data) {
   // Clean up any previous context
   cleanup_context();
@@ -529,6 +548,7 @@ void descriptor_validate_and_load(const char *descriptor_str,
   current_ctx->callback = callback;
   current_ctx->confirm_cb = confirm_cb;
   current_ctx->info_confirm_cb = info_confirm_cb;
+  current_ctx->id_loc_cb = id_loc_cb;
   current_ctx->user_data = user_data;
 
   // Parse descriptor
