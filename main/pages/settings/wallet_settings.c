@@ -34,9 +34,6 @@ static char *stored_passphrase = NULL;
 static char *mnemonic_content = NULL;
 static char base_fingerprint_hex[9] = {0};
 static wallet_network_t selected_network = WALLET_NETWORK_MAINNET;
-static wallet_policy_t selected_policy = WALLET_POLICY_SINGLESIG;
-
-static uint32_t selected_account = 0;
 
 static bool g_settings_applied = false;
 
@@ -146,8 +143,6 @@ static void passphrase_success_cb(const char *passphrase) {
 
 static void refresh_wallet_attributes(void) {
   selected_network = wallet_get_network();
-  selected_policy = wallet_get_policy();
-  selected_account = wallet_get_account();
 
   if (network_dropdown)
     lv_dropdown_set_selected(
@@ -180,8 +175,6 @@ void wallet_settings_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
 
   return_callback = return_cb;
   selected_network = wallet_get_network();
-  selected_account = wallet_get_account();
-  selected_policy = wallet_get_policy();
 
   // Get current mnemonic for later use
   if (!key_get_mnemonic(&mnemonic_content)) {
@@ -385,5 +378,4 @@ void wallet_settings_page_destroy(void) {
   secure_memzero(base_fingerprint_hex, sizeof(base_fingerprint_hex));
   return_callback = NULL;
   selected_network = WALLET_NETWORK_MAINNET;
-  selected_policy = WALLET_POLICY_SINGLESIG;
 }
