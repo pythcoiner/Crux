@@ -11,6 +11,7 @@
 #include "../../ui/theme.h"
 #include "../passphrase.h"
 #include "descriptor_manager.h"
+#include "registered_descriptors.h"
 #include <lvgl.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,6 +27,7 @@ static lv_obj_t *back_button = NULL;
 static lv_obj_t *network_dropdown = NULL;
 static lv_obj_t *passphrase_btn = NULL;
 static lv_obj_t *descriptor_btn = NULL;
+static lv_obj_t *reg_desc_btn = NULL;
 static lv_obj_t *permissive_signing_toggle = NULL;
 static lv_obj_t *title_cont = NULL;
 
@@ -160,6 +162,18 @@ static void descriptor_btn_cb(lv_event_t *e) {
   wallet_settings_page_hide();
   descriptor_manager_page_create(lv_screen_active(), descriptor_return_cb);
   descriptor_manager_page_show();
+}
+
+static void reg_desc_return_cb(void) {
+  registered_descriptors_page_destroy();
+  wallet_settings_page_show();
+}
+
+static void reg_desc_btn_cb(lv_event_t *e) {
+  (void)e;
+  wallet_settings_page_hide();
+  registered_descriptors_page_create(lv_screen_active(), reg_desc_return_cb);
+  registered_descriptors_page_show();
 }
 
 static void passphrase_btn_cb(lv_event_t *e) {
@@ -348,6 +362,26 @@ void wallet_settings_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
     lv_obj_clear_state(permissive_signing_toggle, LV_STATE_CHECKED);
   lv_obj_add_event_cb(permissive_signing_toggle, permissive_signing_cb,
                       LV_EVENT_VALUE_CHANGED, NULL);
+
+  // Registered Descriptors button
+  lv_obj_t *reg_desc_row = lv_obj_create(content);
+  lv_obj_set_size(reg_desc_row, LV_PCT(100), LV_SIZE_CONTENT);
+  theme_apply_transparent_container(reg_desc_row);
+  lv_obj_set_flex_flow(reg_desc_row, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(reg_desc_row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_margin_top(reg_desc_row, pad, 0);
+
+  reg_desc_btn = lv_btn_create(reg_desc_row);
+  lv_obj_set_size(reg_desc_btn, LV_PCT(96), theme_get_min_touch_size());
+  theme_apply_touch_button(reg_desc_btn, false);
+  lv_obj_add_event_cb(reg_desc_btn, reg_desc_btn_cb, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_t *rd_label = lv_label_create(reg_desc_btn);
+  lv_label_set_text(rd_label, "Registered Descriptors");
+  lv_obj_set_style_text_font(rd_label, theme_font_medium(), 0);
+  lv_obj_set_style_text_color(rd_label, main_color(), 0);
+  lv_obj_center(rd_label);
 }
 
 void wallet_settings_page_show(void) {
@@ -374,6 +408,7 @@ void wallet_settings_page_destroy(void) {
   permissive_signing_toggle = NULL;
   passphrase_btn = NULL;
   descriptor_btn = NULL;
+  reg_desc_btn = NULL;
   title_cont = NULL;
   secure_memzero(base_fingerprint_hex, sizeof(base_fingerprint_hex));
   return_callback = NULL;
