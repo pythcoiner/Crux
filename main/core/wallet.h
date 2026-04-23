@@ -16,7 +16,4 @@ wallet_network_t wallet_get_network(void);
 void wallet_cleanup(void);
 void wallet_unload(void);
 
-bool wallet_get_descriptor_string(char **output);
-bool wallet_get_descriptor_checksum(char **output);
-
 #endif // WALLET_H

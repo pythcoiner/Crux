@@ -1,6 +1,7 @@
 // Store Descriptor Page — save descriptor to flash or SD card
 
 #include "store_descriptor.h"
+#include "../core/descriptor_checksum.h"
 #include "../core/storage.h"
 #include "../core/registry.h"
 #include "../core/wallet.h"
