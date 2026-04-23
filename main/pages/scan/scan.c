@@ -56,7 +56,6 @@ typedef struct {
 static lv_obj_t *scan_screen = NULL;
 static lv_obj_t *psbt_info_container = NULL;
 static sankey_diagram_t *tx_diagram = NULL;
-static ui_menu_t *multisig_menu = NULL;
 static void (*return_callback)(void) = NULL;
 static void (*saved_return_callback)(void) = NULL;
 
@@ -66,7 +65,6 @@ static char *psbt_base64 = NULL;
 static char *signed_psbt_base64 = NULL;
 static bool is_testnet = false;
 static int scanned_qr_format = FORMAT_NONE;
-static bool skip_verification = false;
 
 // Message signing data
 static parsed_sign_message_t current_message = {0};
@@ -87,7 +85,6 @@ static void sign_button_cb(lv_event_t *e);
 static void return_from_qr_viewer_cb(void);
 static bool check_psbt_mismatch(void);
 static void mismatch_dialog_cb(void *user_data);
-static void show_multisig_options_menu(void);
 static void return_from_descriptor_scanner_cb(void);
 static void create_message_sign_display(void);
 static void message_sign_button_cb(lv_event_t *e);
@@ -176,9 +173,6 @@ static output_type_t classify_output(size_t output_index,
   bool is_change = false;
   uint32_t address_index = 0;
 
-  if (skip_verification) {
-    return OUTPUT_TYPE_SPEND;
-  }
 
   output_ownership_t ownership =
       psbt_classify_output(current_psbt, output_index, is_testnet);
@@ -378,40 +372,8 @@ static void return_from_qr_scanner_cb(void) {
     } else {
       scanned_qr_format = detected_format;
 
-      bool has_registry_input = false;
-      {
-        size_t num_inputs = 0;
-        if (wally_psbt_get_num_inputs(current_psbt, &num_inputs) == WALLY_OK) {
-          for (size_t i = 0; i < num_inputs; i++) {
-            input_ownership_t own =
-                psbt_classify_input(current_psbt, i, is_testnet);
-            if (own.claim.kind == CLAIM_REGISTRY) {
-              has_registry_input = true;
-              break;
-            }
-          }
-        }
-      }
-      bool any_input_owned_unverified = false;
-      {
-        size_t n = 0;
-        if (wally_psbt_get_num_inputs(current_psbt, &n) == WALLY_OK) {
-          for (size_t i = 0; i < n; i++) {
-            input_ownership_t own =
-                psbt_classify_input(current_psbt, i, is_testnet);
-            if (own.owned && !own.verified && !own.requires_ack) {
-              any_input_owned_unverified = true;
-              break;
-            }
-          }
-        }
-      }
-      if (any_input_owned_unverified && registry_count() == 0) {
-        show_multisig_options_menu();
-      } else {
-        if (!create_psbt_info_display()) {
-          dialog_show_error("Invalid PSBT data", return_callback, 0);
-        }
+      if (!create_psbt_info_display()) {
+        dialog_show_error("Invalid PSBT data", return_callback, 0);
       }
     }
   } else {
@@ -1070,135 +1032,8 @@ static void cleanup_psbt_data(void) {
 
   is_testnet = false;
   scanned_qr_format = FORMAT_NONE;
-  skip_verification = false;
 }
 
-// Multisig menu callbacks
-static void multisig_menu_back_cb(void) {
-  descriptor_loader_destroy_source_menu();
-  if (multisig_menu) {
-    ui_menu_destroy(multisig_menu);
-    multisig_menu = NULL;
-  }
-  cleanup_psbt_data();
-  if (return_callback) {
-    return_callback();
-  }
-}
-
-static void show_multisig_menu_on_error(void) {
-  if (multisig_menu)
-    ui_menu_show(multisig_menu);
-}
-
-static void descriptor_validation_cb(descriptor_validation_result_t result,
-                                     void *user_data) {
-  (void)user_data;
-
-  if (result == VALIDATION_SUCCESS) {
-    descriptor_loader_destroy_source_menu();
-    if (multisig_menu) {
-      ui_menu_destroy(multisig_menu);
-      multisig_menu = NULL;
-    }
-    if (!create_psbt_info_display()) {
-      dialog_show_error("Invalid PSBT data", return_callback, 0);
-    }
-    return;
-  }
-
-  descriptor_loader_show_error(result);
-  show_multisig_menu_on_error();
-}
-
-static void return_from_descriptor_scanner_cb(void) {
-  descriptor_loader_process_scanner(descriptor_validation_cb, NULL,
-                                    show_multisig_menu_on_error);
-}
-
-static void return_from_descriptor_storage(void) {
-  load_descriptor_storage_page_destroy();
-  show_multisig_menu_on_error();
-}
-
-static void success_from_descriptor_storage(void) {
-  load_descriptor_storage_page_destroy();
-  descriptor_loader_destroy_source_menu();
-  if (multisig_menu) {
-    ui_menu_destroy(multisig_menu);
-    multisig_menu = NULL;
-  }
-  if (!create_psbt_info_display()) {
-    dialog_show_error("Invalid PSBT data", return_callback, 0);
-  }
-}
-
-static void load_desc_from_qr_cb(void) {
-  descriptor_loader_destroy_source_menu();
-  if (multisig_menu)
-    ui_menu_hide(multisig_menu);
-  qr_scanner_page_create(NULL, return_from_descriptor_scanner_cb);
-  qr_scanner_page_show();
-}
-
-static void load_desc_from_flash_cb(void) {
-  descriptor_loader_destroy_source_menu();
-  if (multisig_menu)
-    ui_menu_hide(multisig_menu);
-  load_descriptor_storage_page_create(
-      lv_screen_active(), return_from_descriptor_storage,
-      success_from_descriptor_storage, STORAGE_FLASH);
-  load_descriptor_storage_page_show();
-}
-
-static void load_desc_from_sd_cb(void) {
-  descriptor_loader_destroy_source_menu();
-  if (multisig_menu)
-    ui_menu_hide(multisig_menu);
-  load_descriptor_storage_page_create(
-      lv_screen_active(), return_from_descriptor_storage,
-      success_from_descriptor_storage, STORAGE_SD);
-  load_descriptor_storage_page_show();
-}
-
-static void load_desc_source_back_cb(void) {
-  descriptor_loader_destroy_source_menu();
-}
-
-static void load_descriptor_menu_cb(void) {
-  descriptor_loader_show_source_menu(
-      scan_screen, load_desc_from_qr_cb, load_desc_from_flash_cb,
-      load_desc_from_sd_cb, load_desc_source_back_cb);
-}
-
-static void sign_without_verification_cb(void) {
-  if (multisig_menu) {
-    ui_menu_destroy(multisig_menu);
-    multisig_menu = NULL;
-  }
-  skip_verification = true;
-  if (!create_psbt_info_display()) {
-    dialog_show_error("Invalid PSBT data", return_callback, 0);
-  }
-}
-
-static void show_multisig_options_menu(void) {
-  if (!scan_screen) {
-    return;
-  }
-
-  multisig_menu = ui_menu_create(scan_screen, "Multisig PSBT Detected",
-                                 multisig_menu_back_cb);
-  if (!multisig_menu) {
-    dialog_show_error("Failed to create menu", return_callback, 0);
-    return;
-  }
-
-  ui_menu_add_entry(multisig_menu, "Load Descriptor", load_descriptor_menu_cb);
-  ui_menu_add_entry(multisig_menu, "Sign Without Verification",
-                    sign_without_verification_cb);
-  ui_menu_show(multisig_menu);
-}
 
 static void create_message_sign_display(void) {
   if (!scan_screen) {
@@ -1353,10 +1188,6 @@ void scan_page_destroy(void) {
 
   SECURE_FREE_STRING(scanned_mnemonic);
 
-  if (multisig_menu) {
-    ui_menu_destroy(multisig_menu);
-    multisig_menu = NULL;
-  }
 
   if (tx_diagram) {
     sankey_diagram_destroy(tx_diagram);
