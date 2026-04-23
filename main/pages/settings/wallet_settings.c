@@ -26,7 +26,6 @@ static lv_obj_t *network_dropdown = NULL;
 static lv_obj_t *passphrase_btn = NULL;
 static lv_obj_t *descriptor_btn = NULL;
 static lv_obj_t *title_cont = NULL;
-static lv_obj_t *derivation_label = NULL;
 
 static void (*return_callback)(void) = NULL;
 static char *stored_passphrase = NULL;
@@ -51,24 +50,12 @@ static void back_btn_cb(lv_event_t *e) {
     return_callback();
 }
 
-static void update_derivation_path(void) {
-  if (!derivation_label)
-    return;
-  char path[48];
-  wallet_format_derivation_path(path, sizeof(path), selected_policy,
-                                selected_network, selected_account);
-  char buf[64];
-  snprintf(buf, sizeof(buf), ICON_DERIVATION " %s", path);
-  lv_label_set_text(derivation_label, buf);
-}
-
 static void network_dropdown_cb(lv_event_t *e) {
   uint16_t sel = lv_dropdown_get_selected(lv_event_get_target(e));
   wallet_network_t new_network =
       (sel == 0) ? WALLET_NETWORK_MAINNET : WALLET_NETWORK_TESTNET;
   if (new_network != selected_network) {
     selected_network = new_network;
-    update_derivation_path();
   }
 }
 
@@ -158,8 +145,6 @@ static void refresh_wallet_attributes(void) {
   if (network_dropdown)
     lv_dropdown_set_selected(
         network_dropdown, (selected_network == WALLET_NETWORK_MAINNET) ? 0 : 1);
-
-  update_derivation_path();
 }
 
 static void descriptor_return_cb(void) {
@@ -258,13 +243,6 @@ void wallet_settings_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
 
   // Add initial fingerprint (highlighted)
   add_fingerprint_pair(title_cont, base_fingerprint_hex, true);
-
-  // Derivation path row
-  char deriv_path[48];
-  wallet_format_derivation_path(deriv_path, sizeof(deriv_path), selected_policy,
-                                selected_network, selected_account);
-  derivation_label = ui_icon_text_row_create(header_cont, ICON_DERIVATION,
-                                             deriv_path, secondary_color());
 
   // Content container below top bar
   lv_obj_t *content = lv_obj_create(wallet_settings_screen);
@@ -367,7 +345,6 @@ void wallet_settings_page_destroy(void) {
   passphrase_btn = NULL;
   descriptor_btn = NULL;
   title_cont = NULL;
-  derivation_label = NULL;
   secure_memzero(base_fingerprint_hex, sizeof(base_fingerprint_hex));
   return_callback = NULL;
   selected_network = WALLET_NETWORK_MAINNET;
