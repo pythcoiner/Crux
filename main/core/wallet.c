@@ -45,27 +45,8 @@ int wallet_format_derivation_compact(char *buf, size_t buf_size,
 }
 
 bool wallet_init(wallet_network_t network) {
-  if (wallet_initialized) {
-    return true;
-  }
-
-  if (!key_is_loaded()) {
-    return false;
-  }
-
   wallet_network = network;
-
-  wallet_format_derivation_path(derivation_path_buffer,
-                                sizeof(derivation_path_buffer), wallet_policy,
-                                network, wallet_account);
-
-  if (!key_get_derived_key(derivation_path_buffer, &account_key)) {
-    return false;
-  }
-
   wallet_initialized = true;
-  wallet_type = WALLET_TYPE_NATIVE_SEGWIT;
-
   return true;
 }
 
