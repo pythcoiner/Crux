@@ -19,12 +19,14 @@
 #include <wally_core.h>
 
 #include "../../utils/secure_mem.h"
+#include "../../core/settings.h"
 
 static lv_obj_t *wallet_settings_screen = NULL;
 static lv_obj_t *back_button = NULL;
 static lv_obj_t *network_dropdown = NULL;
 static lv_obj_t *passphrase_btn = NULL;
 static lv_obj_t *descriptor_btn = NULL;
+static lv_obj_t *permissive_signing_toggle = NULL;
 static lv_obj_t *title_cont = NULL;
 
 static void (*return_callback)(void) = NULL;
@@ -57,6 +59,11 @@ static void network_dropdown_cb(lv_event_t *e) {
   if (new_network != selected_network) {
     selected_network = new_network;
   }
+}
+
+static void permissive_signing_cb(lv_event_t *e) {
+  lv_obj_t *target = lv_event_get_target(e);
+  settings_set_permissive_signing(lv_obj_has_state(target, LV_STATE_CHECKED));
 }
 
 static void add_fingerprint_pair(lv_obj_t *parent, const char *fp_hex,
@@ -319,6 +326,35 @@ void wallet_settings_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_set_width(network_dropdown, LV_PCT(100));
   lv_obj_add_event_cb(network_dropdown, network_dropdown_cb,
                       LV_EVENT_VALUE_CHANGED, NULL);
+
+  // Permissive signing column (label + dropdown)
+  lv_obj_t *perm_col = lv_obj_create(net_policy_row);
+  lv_obj_set_size(perm_col, LV_PCT(45), LV_SIZE_CONTENT);
+  theme_apply_transparent_container(perm_col);
+  lv_obj_set_flex_flow(perm_col, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(perm_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_gap(perm_col, 5, 0);
+
+  lv_obj_t *perm_label = lv_label_create(perm_col);
+  lv_label_set_text(perm_label, "Permissive signing");
+  lv_obj_set_style_text_font(perm_label, theme_font_small(), 0);
+  lv_obj_set_style_text_color(perm_label, secondary_color(), 0);
+
+  lv_obj_t *perm_caption = lv_label_create(perm_col);
+  lv_label_set_text(perm_caption, "Allow signing for unknown derivation paths after on-screen confirmation. Reduces safety.");
+  lv_label_set_long_mode(perm_caption, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(perm_caption, LV_PCT(100));
+  lv_obj_set_style_text_font(perm_caption, theme_font_small(), 0);
+  lv_obj_set_style_text_color(perm_caption, secondary_color(), 0);
+
+  permissive_signing_toggle = lv_switch_create(perm_col);
+  if (settings_get_permissive_signing())
+    lv_obj_add_state(permissive_signing_toggle, LV_STATE_CHECKED);
+  else
+    lv_obj_clear_state(permissive_signing_toggle, LV_STATE_CHECKED);
+  lv_obj_add_event_cb(permissive_signing_toggle, permissive_signing_cb,
+                      LV_EVENT_VALUE_CHANGED, NULL);
 }
 
 void wallet_settings_page_show(void) {
@@ -342,6 +378,7 @@ void wallet_settings_page_destroy(void) {
   back_button = NULL;
 
   network_dropdown = NULL;
+  permissive_signing_toggle = NULL;
   passphrase_btn = NULL;
   descriptor_btn = NULL;
   title_cont = NULL;
