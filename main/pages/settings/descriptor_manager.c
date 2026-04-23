@@ -2,6 +2,7 @@
 
 #include "descriptor_manager.h"
 #include "../../core/storage.h"
+#include "../../core/registry.h"
 #include "../../core/wallet.h"
 #include "../../qr/encoder.h"
 #include "../../qr/scanner.h"
@@ -430,7 +431,7 @@ static void build_main_menu(void) {
   if (!main_menu)
     return;
 
-  bool has_desc = wallet_has_descriptor();
+  bool has_desc = registry_count() > 0;
 
   ui_menu_add_entry(main_menu,
                     has_desc ? "Load Other Descriptor" : "Load Descriptor",
@@ -457,7 +458,7 @@ static void build_main_menu(void) {
 }
 
 static void refresh_menu_visibility(void) {
-  bool has_desc = wallet_has_descriptor();
+  bool has_desc = registry_count() > 0;
 
   if (main_menu) {
     /* Update Load entry label */
@@ -484,7 +485,7 @@ void descriptor_manager_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   return_callback = return_cb;
   current_format = FORMAT_PLAINTEXT_DESC;
 
-  if (wallet_has_descriptor())
+  if (registry_count())
     wallet_get_descriptor_string(&descriptor_string);
 
   manager_screen = theme_create_page_container(parent);

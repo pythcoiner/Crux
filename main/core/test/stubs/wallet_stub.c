@@ -5,7 +5,6 @@
 #include "core/registry.h"
 
 wallet_network_t wallet_get_network(void) { return WALLET_NETWORK_MAINNET; }
-bool wallet_has_descriptor(void) { return false; }
 registry_entry_t *registry_match_keypath(const uint8_t *kp, size_t kp_len,
                                          size_t *cursor) {
   (void)kp; (void)kp_len; (void)cursor;

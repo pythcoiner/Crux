@@ -16,8 +16,6 @@ wallet_network_t wallet_get_network(void);
 void wallet_cleanup(void);
 void wallet_unload(void);
 
-// Descriptor management (registry-backed)
-bool wallet_has_descriptor(void);
 bool wallet_get_descriptor_string(char **output);
 bool wallet_get_descriptor_checksum(char **output);
 

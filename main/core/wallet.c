@@ -29,8 +29,6 @@ void wallet_unload(void) {
   wallet_cleanup();
 }
 
-bool wallet_has_descriptor(void) { return registry_count() > 0; }
-
 /*
  * Descriptor checksum (BIP-380) — computed over the h-normalized canonical
  * form so the result matches coordinators like Sparrow that use 'h' for

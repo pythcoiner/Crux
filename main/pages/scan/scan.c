@@ -10,6 +10,7 @@
 #include "../../core/message_sign.h"
 #include "../../core/psbt.h"
 #include "../../core/storage.h"
+#include "../../core/registry.h"
 #include "../../core/wallet.h"
 #include "../../qr/encoder.h"
 #include "../../qr/parser.h"
@@ -391,11 +392,21 @@ static void return_from_qr_scanner_cb(void) {
           }
         }
       }
-      if (has_registry_input) {
-        if (!create_psbt_info_display()) {
-          dialog_show_error("Invalid PSBT data", return_callback, 0);
+      bool any_input_owned_unverified = false;
+      {
+        size_t n = 0;
+        if (wally_psbt_get_num_inputs(current_psbt, &n) == WALLY_OK) {
+          for (size_t i = 0; i < n; i++) {
+            input_ownership_t own =
+                psbt_classify_input(current_psbt, i, is_testnet);
+            if (own.owned && !own.verified && !own.requires_ack) {
+              any_input_owned_unverified = true;
+              break;
+            }
+          }
         }
-      } else if (!wallet_has_descriptor()) {
+      }
+      if (any_input_owned_unverified && registry_count() == 0) {
         show_multisig_options_menu();
       } else {
         if (!create_psbt_info_display()) {

@@ -47,7 +47,6 @@ void storage_free_file_list(char **files, int count) {
 
 /* --- Wallet stubs --- */
 wallet_network_t wallet_get_network(void)                      { return WALLET_NETWORK_MAINNET; }
-bool             wallet_has_descriptor(void)                   { return false; }
 
 /* --- Settings stub: permissive signing disabled in tests --- */
 #include "core/settings.h"
