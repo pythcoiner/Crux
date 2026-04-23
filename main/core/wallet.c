@@ -1,5 +1,6 @@
 #include "wallet.h"
 #include "key.h"
+#include "registry.h"
 #include <esp_log.h>
 #include <stdio.h>
 #include <string.h>
@@ -206,6 +207,7 @@ void wallet_cleanup(void) {
   }
   wallet_initialized = false;
   wallet_account = 0;
+  registry_clear();
 }
 
 void wallet_unload(void) {
