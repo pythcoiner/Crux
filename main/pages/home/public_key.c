@@ -47,11 +47,12 @@ void public_key_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
 
   return_callback = return_cb;
 
-  const char *derivation_path = wallet_get_derivation();
+  char derivation_path[48];
+  wallet_format_derivation_path(derivation_path, sizeof(derivation_path),
+                                false, wallet_get_network(), 0);
   char derivation_compact[32];
-  wallet_format_derivation_compact(
-      derivation_compact, sizeof(derivation_compact), wallet_get_policy(),
-      wallet_get_network(), wallet_get_account());
+  wallet_format_derivation_compact(derivation_compact, sizeof(derivation_compact),
+                                   false, wallet_get_network(), 0);
 
   public_key_screen = lv_obj_create(parent);
   lv_obj_set_size(public_key_screen, LV_PCT(100), LV_PCT(100));
