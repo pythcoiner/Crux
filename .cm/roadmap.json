@@ -10,7 +10,7 @@
         {
           "id": "item-1",
           "name": "P01: Scaffolding: empty ss_whitelist/registry skeletons + CMake wiring",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-1.task-1"
@@ -26,7 +26,7 @@
         {
           "id": "item-2",
           "name": "P02: ss_whitelist: types, constants, inline helpers",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-2.task-1"
@@ -35,7 +35,7 @@
         {
           "id": "item-3",
           "name": "P03: ss_keypath_parse + test_ss_whitelist_parse.c",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-3.task-1"
@@ -44,7 +44,7 @@
         {
           "id": "item-4",
           "name": "P04: ss_keypath_format + round-trip test",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-4.task-1"
@@ -53,7 +53,7 @@
         {
           "id": "item-5",
           "name": "P05: ss_keypath_is_whitelisted + test_ss_whitelist_is_whitelisted.c",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-5.task-1"
@@ -62,7 +62,7 @@
         {
           "id": "item-6",
           "name": "P06: ss_scriptpubkey dispatcher + P2WPKH branch",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-6.task-1"
@@ -71,7 +71,7 @@
         {
           "id": "item-7",
           "name": "P07: ss_scriptpubkey P2PKH branch",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-7.task-1"
@@ -80,7 +80,7 @@
         {
           "id": "item-8",
           "name": "P08: ss_scriptpubkey P2SH_P2WPKH branch + ss_scriptpubkey_with_redeem variant",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-8.task-1"
@@ -89,7 +89,7 @@
         {
           "id": "item-9",
           "name": "P09: ss_scriptpubkey P2TR branch (BIP341 tweak)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-9.task-1"
@@ -98,7 +98,7 @@
         {
           "id": "item-10",
           "name": "P10: ss_address dispatcher + test_ss_whitelist_regen.c integration tests",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-10.task-1"
@@ -107,7 +107,7 @@
         {
           "id": "item-11",
           "name": "P11: purpose_script_binding_check_strict + _soft + test_purpose_binding.c",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-11.task-1"
@@ -123,7 +123,7 @@
         {
           "id": "item-12",
           "name": "P12: registry: types, REGISTRY_MAX_ENTRIES, static storage",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-12.task-1"
@@ -132,7 +132,7 @@
         {
           "id": "item-13",
           "name": "P13: registry accessors: count / get / find_by_id",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-13.task-1"
@@ -141,7 +141,7 @@
         {
           "id": "item-14",
           "name": "P14: registry_clear (free each desc + zero array)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-14.task-1"
@@ -150,7 +150,7 @@
         {
           "id": "item-15",
           "name": "P15: registry_add_from_string in-memory path (persist=false)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-15.task-1"
@@ -159,7 +159,7 @@
         {
           "id": "item-16",
           "name": "P16: registry_add_from_string persist path via storage_save_descriptor",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-16.task-1"
@@ -168,7 +168,7 @@
         {
           "id": "item-17",
           "name": "P17: registry_remove (free + shift + storage_delete_descriptor)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-17.task-1"
@@ -177,7 +177,7 @@
         {
           "id": "item-18",
           "name": "P18: registry_match_keypath + test_registry_match.c",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-18.task-1"
@@ -186,7 +186,7 @@
         {
           "id": "item-19",
           "name": "P19: registry_init: scan flash + SD, parse all, populate, log count",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-19.task-1"
@@ -195,7 +195,7 @@
         {
           "id": "item-20",
           "name": "P20: test_registry_parse.c (wpkh / wsh(sortedmulti) / tr / miniscript)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-20.task-1"
@@ -211,7 +211,7 @@
         {
           "id": "item-21",
           "name": "P21: Add settings_get/set_permissive_signing + KEY_PERMISSIVE_SIGNING (additive)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-21.task-1"
@@ -227,7 +227,7 @@
         {
           "id": "item-22",
           "name": "P22: psbt.h: claim_t, expected_scripts_t, input/output_ownership_t + fn decls",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-22.task-1"
@@ -236,7 +236,7 @@
         {
           "id": "item-23",
           "name": "P23: psbt_input_utxo_script helper (witness-utxo first, fallback utxo+prevout)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-23.task-1"
@@ -245,7 +245,7 @@
         {
           "id": "item-24",
           "name": "P24: try_match_whitelist + try_match_registry wrappers (with cursor pagination)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-24.task-1"
@@ -254,7 +254,7 @@
         {
           "id": "item-25",
           "name": "P25: claim_regenerate whitelist branch + test",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-25.task-1"
@@ -263,7 +263,7 @@
         {
           "id": "item-26",
           "name": "P26: claim_regenerate registry branch (wsh / sh(wsh) / sh(multi)) + test",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-26.task-1"
@@ -272,7 +272,7 @@
         {
           "id": "item-27",
           "name": "P27: psbt_classify_input + fixtures A/D/E of test_psbt_classify.c",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-27.task-1"
@@ -281,7 +281,7 @@
         {
           "id": "item-28",
           "name": "P28: psbt_classify_output + fixtures B/C of test_psbt_classify.c",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-28.task-1"
@@ -297,7 +297,7 @@
         {
           "id": "item-29",
           "name": "P29: Boot wiring: registry_init called after wallet_init in key_confirmation.c",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-29.task-1"
@@ -313,7 +313,7 @@
         {
           "id": "item-30",
           "name": "P30: Rewrite psbt_sign body to use classifier + claim_regenerate",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-30.task-1"
@@ -322,7 +322,7 @@
         {
           "id": "item-31",
           "name": "P31: Delete psbt_get_output_derivation; migrate callers to psbt_classify_output",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-31.task-1"
@@ -331,7 +331,7 @@
         {
           "id": "item-32",
           "name": "P32: Delete psbt_verify_output_with_descriptor; migrate callers",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-32.task-1"
@@ -340,7 +340,7 @@
         {
           "id": "item-33",
           "name": "P33: Delete/replace psbt_is_multisig (callers switch to claim.kind==CLAIM_REGISTRY)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-33.task-1"
@@ -356,7 +356,7 @@
         {
           "id": "item-34",
           "name": "P34: addresses.c: source-picker scaffold replacing type_dropdown",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-34.task-1"
@@ -365,7 +365,7 @@
         {
           "id": "item-35",
           "name": "P35: addresses.c: refresh_address_list dispatches to ss_address / wally_descriptor_to_address",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-35.task-1"
@@ -374,7 +374,7 @@
         {
           "id": "item-36",
           "name": "P36: addresses.c: account input + remove 'descriptor required' empty state + rename Load->Register",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-36.task-1"
@@ -383,7 +383,7 @@
         {
           "id": "item-37",
           "name": "P37: address_checker.c: source picker",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-37.task-1"
@@ -392,7 +392,7 @@
         {
           "id": "item-38",
           "name": "P38: address_checker.c: sweep within selected source",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-38.task-1"
@@ -401,7 +401,7 @@
         {
           "id": "item-39",
           "name": "P39: store_descriptor.c: auto-register via registry_add_from_string(persist=false) after save",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-39.task-1"
@@ -410,7 +410,7 @@
         {
           "id": "item-40",
           "name": "P40: load_descriptor_storage.c: register after .kef decrypt (success_from_kef_decrypt)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-40.task-1"
@@ -419,7 +419,7 @@
         {
           "id": "item-41",
           "name": "P41: load_descriptor_storage.c: register after plaintext load (paranoia)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-41.task-1"
@@ -435,7 +435,7 @@
         {
           "id": "item-42",
           "name": "P42: descriptor_validator: redirect info_confirm_proceed to registry_add_from_string(persist=true)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-42.task-1"
@@ -444,7 +444,7 @@
         {
           "id": "item-43",
           "name": "P43: descriptor_validator: add WARN dialog via purpose_script_binding_check_soft",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-43.task-1"
@@ -453,7 +453,7 @@
         {
           "id": "item-44",
           "name": "P44: descriptor_validator: delete apply_changes_and_verify (lines 350-386)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-44.task-1"
@@ -462,7 +462,7 @@
         {
           "id": "item-45",
           "name": "P45: descriptor_validator: delete check_attributes_and_verify + state fields",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-45.task-1"
@@ -471,7 +471,7 @@
         {
           "id": "item-46",
           "name": "P46: descriptor_validator: delete parse_origin_path helper (lines 80-143)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-46.task-1"
@@ -487,7 +487,7 @@
         {
           "id": "item-47",
           "name": "P47: wallet_settings.c: remove policy_dropdown UI element + handlers",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-47.task-1"
@@ -496,7 +496,7 @@
         {
           "id": "item-48",
           "name": "P48: wallet_settings.c: remove account spinner + save handler",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-48.task-1"
@@ -505,7 +505,7 @@
         {
           "id": "item-49",
           "name": "P49: wallet_settings.c: remove derivation-path preview label",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-49.task-1"
@@ -514,7 +514,7 @@
         {
           "id": "item-50",
           "name": "P50: wallet_settings.c: add 'Permissive signing' toggle wired to new setting",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-50.task-1"
@@ -523,7 +523,7 @@
         {
           "id": "item-51",
           "name": "P51: wallet_settings.c: update update_apply_button_state",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-51.task-1"
@@ -532,7 +532,7 @@
         {
           "id": "item-52",
           "name": "P52: registered_descriptors.c sub-page with Remove/View (optional)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-52.task-1"
@@ -548,7 +548,7 @@
         {
           "id": "item-53",
           "name": "P53: Drop settings_get_default_policy() + wallet_set_policy() from key_confirmation.c",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-53.task-1"
@@ -557,7 +557,7 @@
         {
           "id": "item-54",
           "name": "P54: Remove settings_get_default_policy / settings_set_default_policy",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-54.task-1"
@@ -566,7 +566,7 @@
         {
           "id": "item-55",
           "name": "P55: Remove KEY_DEFAULT_POL constant",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-55.task-1"
@@ -582,7 +582,7 @@
         {
           "id": "item-56",
           "name": "P56: wallet.c: delete derive_address, derive_multisig_address helpers",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-56.task-1"
@@ -591,7 +591,7 @@
         {
           "id": "item-57",
           "name": "P57: wallet.c: simplify wallet_init(network) to network-record only",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-57.task-1"
@@ -600,7 +600,7 @@
         {
           "id": "item-58",
           "name": "P58: wallet.c: wallet_cleanup calls registry_clear()",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-58.task-1"
@@ -609,7 +609,7 @@
         {
           "id": "item-59",
           "name": "P59: wallet.c: delete statics (wallet_type/policy/account/derivation_path_buffer/loaded_descriptor/account_key)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-59.task-1"
@@ -618,7 +618,7 @@
         {
           "id": "item-60",
           "name": "P60: wallet.h: delete wallet_policy_t enum",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-60.task-1"
@@ -627,7 +627,7 @@
         {
           "id": "item-61",
           "name": "P61: wallet.h: delete format_derivation_path/format_derivation_compact/get_derivation",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-61.task-1"
@@ -636,7 +636,7 @@
         {
           "id": "item-62",
           "name": "P62: wallet.h: delete get_account / set_account",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-62.task-1"
@@ -645,7 +645,7 @@
         {
           "id": "item-63",
           "name": "P63: wallet.h: delete get_receive_address / get_change_address / get_scriptpubkey",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-63.task-1"
@@ -654,7 +654,7 @@
         {
           "id": "item-64",
           "name": "P64: wallet.h: delete has_descriptor / load_descriptor / clear_descriptor",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-64.task-1"
@@ -663,7 +663,7 @@
         {
           "id": "item-65",
           "name": "P65: wallet.h: delete get_multisig_receive_address / get_multisig_change_address",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-65.task-1"
@@ -672,7 +672,7 @@
         {
           "id": "item-66",
           "name": "P66: wallet.h: delete get_policy / set_policy",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-66.task-1"
@@ -681,7 +681,7 @@
         {
           "id": "item-67",
           "name": "P67: Move BIP-380 checksum helper to descriptor_checksum.c (optional)",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-67.task-1"
@@ -697,7 +697,7 @@
         {
           "id": "item-68",
           "name": "P68: Final rg sweep for stragglers of the removed wallet_* API; migrate or delete",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-68.task-1"
@@ -706,7 +706,7 @@
         {
           "id": "item-69",
           "name": "P69: Remove dead tests covering deleted policy paths under main/core/test/",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-69.task-1"
@@ -715,7 +715,7 @@
         {
           "id": "item-70",
           "name": "P70: Update repo-root ROADMAP.md to reflect new model",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-70.task-1"
@@ -724,7 +724,7 @@
         {
           "id": "item-71",
           "name": "P71: CHANGELOG entry for the rework",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-71.task-1"
@@ -740,7 +740,7 @@
         {
           "id": "item-72",
           "name": "P72: Device: clean builds on wave_4b, wave_35, wave_5",
-          "completed": false,
+          "completed": true,
           "sub_items": [],
           "linked_task_ids": [
             "phase-72.task-1"
@@ -766,7 +766,7 @@
         },
         {
           "id": "item-75",
-          "name": "P75: Device: PSBT behavioural spec (every row of PLAN.md \u00a7Behavioural spec)",
+          "name": "P75: Device: PSBT behavioural spec (every row of PLAN.md §Behavioural spec)",
           "completed": false,
           "sub_items": [],
           "linked_task_ids": [
