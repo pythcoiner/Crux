@@ -23,7 +23,6 @@
 static lv_obj_t *wallet_settings_screen = NULL;
 static lv_obj_t *back_button = NULL;
 static lv_obj_t *network_dropdown = NULL;
-static lv_obj_t *policy_dropdown = NULL;
 static lv_obj_t *passphrase_btn = NULL;
 static lv_obj_t *descriptor_btn = NULL;
 static lv_obj_t *apply_btn = NULL;
@@ -243,18 +242,6 @@ static void network_dropdown_cb(lv_event_t *e) {
   }
 }
 
-static void policy_dropdown_cb(lv_event_t *e) {
-  uint16_t sel = lv_dropdown_get_selected(lv_event_get_target(e));
-  wallet_policy_t new_policy =
-      (sel == 0) ? WALLET_POLICY_SINGLESIG : WALLET_POLICY_MULTISIG;
-  if (new_policy != selected_policy) {
-    selected_policy = new_policy;
-    settings_changed = true;
-    update_derivation_path();
-    update_apply_button_state();
-  }
-}
-
 static void add_fingerprint_pair(lv_obj_t *parent, const char *fp_hex,
                                  bool highlighted) {
   lv_color_t color = highlighted ? highlight_color() : secondary_color();
@@ -345,9 +332,6 @@ static void refresh_wallet_attributes(void) {
   if (network_dropdown)
     lv_dropdown_set_selected(
         network_dropdown, (selected_network == WALLET_NETWORK_MAINNET) ? 0 : 1);
-  if (policy_dropdown)
-    lv_dropdown_set_selected(
-        policy_dropdown, (selected_policy == WALLET_POLICY_SINGLESIG) ? 0 : 1);
 
   update_account_display();
   update_derivation_path();
@@ -580,27 +564,6 @@ void wallet_settings_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_add_event_cb(network_dropdown, network_dropdown_cb,
                       LV_EVENT_VALUE_CHANGED, NULL);
 
-  // Policy column (label + dropdown)
-  lv_obj_t *policy_col = lv_obj_create(net_policy_row);
-  lv_obj_set_size(policy_col, LV_PCT(45), LV_SIZE_CONTENT);
-  theme_apply_transparent_container(policy_col);
-  lv_obj_set_flex_flow(policy_col, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(policy_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
-                        LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_gap(policy_col, 5, 0);
-
-  lv_obj_t *policy_label = lv_label_create(policy_col);
-  lv_label_set_text(policy_label, "Policy");
-  lv_obj_set_style_text_font(policy_label, theme_font_small(), 0);
-  lv_obj_set_style_text_color(policy_label, secondary_color(), 0);
-
-  policy_dropdown = theme_create_dropdown(policy_col, "Single-sig\nMultisig");
-  lv_dropdown_set_selected(
-      policy_dropdown, (selected_policy == WALLET_POLICY_SINGLESIG) ? 0 : 1);
-  lv_obj_set_width(policy_dropdown, LV_PCT(100));
-  lv_obj_add_event_cb(policy_dropdown, policy_dropdown_cb,
-                      LV_EVENT_VALUE_CHANGED, NULL);
-
   // Account label
   lv_obj_t *acc_label = lv_label_create(content);
   lv_label_set_text(acc_label, "Account");
@@ -662,7 +625,6 @@ void wallet_settings_page_destroy(void) {
   back_button = NULL;
 
   network_dropdown = NULL;
-  policy_dropdown = NULL;
   passphrase_btn = NULL;
   descriptor_btn = NULL;
   account_btn = NULL;
