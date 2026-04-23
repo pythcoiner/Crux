@@ -2,6 +2,7 @@
 #include "key.h"
 #include "wallet.h"
 #include <esp_log.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,7 +11,9 @@
 #include <wally_core.h>
 #include <wally_descriptor.h>
 
+#include "../ui/dialog.h"
 #include "registry.h"
+#include "ss_whitelist.h"
 #include "storage.h"
 
 static const char *TAG = "descriptor_validator";
@@ -295,6 +298,19 @@ static void info_confirm_proceed(bool confirmed, void *user_data) {
   }
 }
 
+static void psb_warn_confirm_cb(bool confirmed, void *user_data) {
+  (void)user_data;
+  if (!confirmed) {
+    complete_validation(VALIDATION_USER_DECLINED);
+    return;
+  }
+  if (current_ctx->info_confirm_cb) {
+    current_ctx->info_confirm_cb(&current_ctx->info, info_confirm_proceed);
+  } else {
+    info_confirm_proceed(true, NULL);
+  }
+}
+
 // Re-parse descriptor, verify xpub matches wallet, extract info, and show it.
 static void verify_xpub_and_show_info(void) {
   uint32_t wally_network = (wallet_get_network() == WALLET_NETWORK_MAINNET)
@@ -351,12 +367,57 @@ static void verify_xpub_and_show_info(void) {
     return;
   }
 
-  // Extract descriptor info before freeing
+  // Run soft purpose-script binding check before freeing the descriptor.
+  psb_result_t psb_result = purpose_script_binding_check_soft(descriptor);
+
+  // Build the WARN message while the descriptor is still available.
+  char psb_msg[128] = {0};
+  if (psb_result == PSB_WARN) {
+    // Determine outer script name from canonical form.
+    const char *script_name = "unknown";
+    char *canon = NULL;
+    if (wally_descriptor_canonicalize(descriptor,
+                                      WALLY_MS_CANONICAL_NO_CHECKSUM,
+                                      &canon) == WALLY_OK && canon) {
+      if      (strncmp(canon, "sh(wpkh(", 8) == 0) script_name = "sh(wpkh)";
+      else if (strncmp(canon, "sh(wsh(",  7) == 0) script_name = "sh(wsh)";
+      else if (strncmp(canon, "wpkh(",    5) == 0) script_name = "wpkh";
+      else if (strncmp(canon, "wsh(",     4) == 0) script_name = "wsh";
+      else if (strncmp(canon, "pkh(",     4) == 0) script_name = "pkh";
+      else if (strncmp(canon, "tr(",      3) == 0) script_name = "tr";
+      wally_free_string(canon);
+    }
+    // Extract purpose number from key[0] origin path.
+    uint32_t purpose = 0;
+    char *path = NULL;
+    if (wally_descriptor_get_key_origin_path_str(descriptor, 0, &path)
+        == WALLY_OK && path && path[0] != '\0') {
+      char *endp = NULL;
+      unsigned long ul = strtoul(path, &endp, 10);
+      if (endp != path && ul <= 0x7FFFFFFFul)
+        purpose = (uint32_t)ul;
+      wally_free_string(path);
+    }
+    snprintf(psb_msg, sizeof(psb_msg),
+             "This descriptor uses a purpose-%" PRIu32 " origin\n"
+             "wrapped in a %s script.\n"
+             "This is unusual. Register anyway?",
+             purpose, script_name);
+  }
+
+  // Extract descriptor info before freeing.
   extract_descriptor_info(descriptor, current_ctx->descriptor_str,
                           &current_ctx->info);
   wally_descriptor_free(descriptor);
 
-  // Show info confirmation if callback is set, otherwise auto-confirm
+  // If purpose-script binding mismatch: gate behind a WARN dialog.
+  if (psb_result == PSB_WARN) {
+    dialog_show_danger_confirm(psb_msg, psb_warn_confirm_cb, NULL,
+                               DIALOG_STYLE_OVERLAY);
+    return;
+  }
+
+  // PSB_OK or PSB_NA: proceed to info confirmation.
   if (current_ctx->info_confirm_cb) {
     current_ctx->info_confirm_cb(&current_ctx->info, info_confirm_proceed);
   } else {
