@@ -25,8 +25,6 @@ static lv_obj_t *back_button = NULL;
 static lv_obj_t *network_dropdown = NULL;
 static lv_obj_t *passphrase_btn = NULL;
 static lv_obj_t *descriptor_btn = NULL;
-static lv_obj_t *apply_btn = NULL;
-static lv_obj_t *apply_label = NULL;
 static lv_obj_t *title_cont = NULL;
 static lv_obj_t *derivation_label = NULL;
 
@@ -36,35 +34,8 @@ static char *mnemonic_content = NULL;
 static char base_fingerprint_hex[9] = {0};
 static wallet_network_t selected_network = WALLET_NETWORK_MAINNET;
 static wallet_policy_t selected_policy = WALLET_POLICY_SINGLESIG;
-static bool settings_changed = false;
 
-static lv_obj_t *account_btn = NULL;
-static lv_obj_t *account_value_label = NULL;
-static lv_obj_t *account_overlay = NULL;
-static lv_obj_t *account_numpad = NULL;
-static lv_obj_t *account_input_label = NULL;
 static uint32_t selected_account = 0;
-static char account_input_buffer[12];
-static int account_input_len = 0;
-
-static const char *numpad_map[] = {"1",
-                                   "2",
-                                   "3",
-                                   "\n",
-                                   "4",
-                                   "5",
-                                   "6",
-                                   "\n",
-                                   "7",
-                                   "8",
-                                   "9",
-                                   "\n",
-                                   LV_SYMBOL_BACKSPACE,
-                                   "0",
-                                   LV_SYMBOL_OK,
-                                   ""};
-
-static void update_apply_button_state(void);
 
 static bool g_settings_applied = false;
 
@@ -91,154 +62,13 @@ static void update_derivation_path(void) {
   lv_label_set_text(derivation_label, buf);
 }
 
-static void update_account_display(void) {
-  if (!account_value_label)
-    return;
-  char buf[12];
-  snprintf(buf, sizeof(buf), "%u", selected_account);
-  lv_label_set_text(account_value_label, buf);
-}
-
-static void update_account_input_display(void) {
-  if (!account_input_label)
-    return;
-  char display[14];
-  if (account_input_len == 0) {
-    snprintf(display, sizeof(display), "_");
-  } else {
-    snprintf(display, sizeof(display), "%s_", account_input_buffer);
-  }
-  lv_label_set_text(account_input_label, display);
-}
-
-static void update_numpad_buttons(void) {
-  if (!account_numpad)
-    return;
-
-  bool empty = (account_input_len == 0);
-  if (empty) {
-    lv_btnmatrix_set_btn_ctrl(account_numpad, 12, LV_BTNMATRIX_CTRL_DISABLED);
-    lv_btnmatrix_set_btn_ctrl(account_numpad, 14, LV_BTNMATRIX_CTRL_DISABLED);
-  } else {
-    lv_btnmatrix_clear_btn_ctrl(account_numpad, 12, LV_BTNMATRIX_CTRL_DISABLED);
-    lv_btnmatrix_clear_btn_ctrl(account_numpad, 14, LV_BTNMATRIX_CTRL_DISABLED);
-  }
-}
-
-static void close_account_overlay(void) {
-  if (account_overlay) {
-    lv_obj_del(account_overlay);
-    account_overlay = NULL;
-    account_numpad = NULL;
-    account_input_label = NULL;
-  }
-}
-
-static void numpad_event_cb(lv_event_t *e) {
-  lv_obj_t *btnm = lv_event_get_target(e);
-  uint32_t btn_id = lv_btnmatrix_get_selected_btn(btnm);
-  const char *txt = lv_btnmatrix_get_btn_text(btnm, btn_id);
-
-  if (strcmp(txt, LV_SYMBOL_OK) == 0) {
-    if (account_input_len > 0) {
-      unsigned long val = strtoul(account_input_buffer, NULL, 10);
-      if (val <= 2147483647) {
-        selected_account = (uint32_t)val;
-        settings_changed = true;
-        update_account_display();
-        update_derivation_path();
-        update_apply_button_state();
-      }
-    }
-    close_account_overlay();
-  } else if (strcmp(txt, LV_SYMBOL_BACKSPACE) == 0) {
-    if (account_input_len > 0) {
-      account_input_len--;
-      account_input_buffer[account_input_len] = '\0';
-      update_account_input_display();
-      update_numpad_buttons();
-    }
-  } else if (account_input_len < 10) {
-    account_input_buffer[account_input_len++] = txt[0];
-    account_input_buffer[account_input_len] = '\0';
-    update_account_input_display();
-    update_numpad_buttons();
-  }
-}
-
-static void show_account_overlay(void) {
-  account_input_len =
-      snprintf(account_input_buffer, sizeof(account_input_buffer), "%u",
-               selected_account);
-
-  account_overlay = lv_obj_create(lv_screen_active());
-  lv_obj_remove_style_all(account_overlay);
-  lv_obj_set_size(account_overlay, LV_PCT(100), LV_PCT(100));
-  lv_obj_set_style_bg_color(account_overlay, lv_color_black(), 0);
-  lv_obj_set_style_bg_opa(account_overlay, LV_OPA_50, 0);
-  lv_obj_add_flag(account_overlay, LV_OBJ_FLAG_CLICKABLE);
-
-  lv_obj_t *modal = lv_obj_create(account_overlay);
-  lv_obj_set_size(modal, LV_PCT(80), LV_PCT(80));
-  lv_obj_center(modal);
-  theme_apply_frame(modal);
-  lv_obj_set_style_bg_opa(modal, LV_OPA_90, 0);
-  lv_obj_clear_flag(modal, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_set_flex_flow(modal, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(modal, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
-                        LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_all(modal, theme_get_default_padding(), 0);
-  lv_obj_set_style_pad_gap(modal, 15, 0);
-
-  lv_obj_t *title = lv_label_create(modal);
-  lv_label_set_text(title, "Account");
-  lv_obj_set_style_text_font(title, theme_font_medium(), 0);
-  lv_obj_set_style_text_color(title, main_color(), 0);
-
-  account_input_label = lv_label_create(modal);
-  lv_obj_set_style_text_font(account_input_label, theme_font_medium(), 0);
-  lv_obj_set_style_text_color(account_input_label, highlight_color(), 0);
-  update_account_input_display();
-
-  account_numpad = lv_btnmatrix_create(modal);
-  lv_btnmatrix_set_map(account_numpad, numpad_map);
-  lv_obj_set_size(account_numpad, LV_PCT(100), LV_PCT(70));
-  lv_obj_set_flex_grow(account_numpad, 1);
-  theme_apply_btnmatrix(account_numpad);
-  lv_obj_add_event_cb(account_numpad, numpad_event_cb, LV_EVENT_VALUE_CHANGED,
-                      NULL);
-
-  update_numpad_buttons();
-}
-
-static void account_btn_cb(lv_event_t *e) {
-  (void)e;
-  show_account_overlay();
-}
-
-static void update_apply_button_state(void) {
-  if (!apply_btn)
-    return;
-  if (settings_changed) {
-    lv_obj_clear_state(apply_btn, LV_STATE_DISABLED);
-    if (apply_label)
-      lv_obj_set_style_text_color(apply_label, main_color(), 0);
-  } else {
-    lv_obj_add_state(apply_btn, LV_STATE_DISABLED);
-    if (apply_label)
-      lv_obj_set_style_text_color(apply_label, disabled_color(), 0);
-  }
-}
-
 static void network_dropdown_cb(lv_event_t *e) {
   uint16_t sel = lv_dropdown_get_selected(lv_event_get_target(e));
   wallet_network_t new_network =
       (sel == 0) ? WALLET_NETWORK_MAINNET : WALLET_NETWORK_TESTNET;
   if (new_network != selected_network) {
     selected_network = new_network;
-    settings_changed = true;
     update_derivation_path();
-    update_apply_button_state();
   }
 }
 
@@ -313,29 +143,23 @@ static void passphrase_success_cb(const char *passphrase) {
     stored_passphrase = strdup(passphrase);
   }
 
-  settings_changed = true;
-
   passphrase_page_destroy();
   wallet_settings_page_show();
 
   // Update title to show both fingerprints
   update_title_with_passphrase(stored_passphrase);
-  update_apply_button_state();
 }
 
 static void refresh_wallet_attributes(void) {
   selected_network = wallet_get_network();
   selected_policy = wallet_get_policy();
   selected_account = wallet_get_account();
-  settings_changed = false;
 
   if (network_dropdown)
     lv_dropdown_set_selected(
         network_dropdown, (selected_network == WALLET_NETWORK_MAINNET) ? 0 : 1);
 
-  update_account_display();
   update_derivation_path();
-  update_apply_button_state();
 }
 
 static void descriptor_return_cb(void) {
@@ -358,51 +182,6 @@ static void passphrase_btn_cb(lv_event_t *e) {
                          passphrase_success_cb);
 }
 
-static void do_apply_settings(void) {
-  if (!mnemonic_content)
-    return;
-
-  bool is_testnet = (selected_network == WALLET_NETWORK_TESTNET);
-  wallet_cleanup();
-  wallet_set_account(selected_account);
-  wallet_set_policy(selected_policy);
-
-  if (key_load_from_mnemonic(mnemonic_content, stored_passphrase, is_testnet)) {
-    if (!wallet_init(selected_network)) {
-      dialog_show_error("Failed to initialize wallet", return_callback, 0);
-      return;
-    }
-    settings_changed = false;
-    g_settings_applied = true;
-    update_apply_button_state();
-    if (return_callback)
-      return_callback();
-  } else {
-    dialog_show_error("Failed to reload key", NULL, 0);
-  }
-}
-
-static void apply_with_warning_cb(bool result, void *user_data) {
-  (void)user_data;
-  if (result) {
-    do_apply_settings();
-  }
-}
-
-static void apply_btn_cb(lv_event_t *e) {
-  (void)e;
-  if (!mnemonic_content)
-    return;
-
-  if (selected_account > 99) {
-    dialog_show_confirm("Account numbers above 99 are not recommended.\n\n"
-                        "Continue?",
-                        apply_with_warning_cb, NULL, DIALOG_STYLE_OVERLAY);
-    return;
-  }
-  do_apply_settings();
-}
-
 void wallet_settings_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   if (!parent || !key_is_loaded() || !wallet_is_initialized())
     return;
@@ -411,7 +190,6 @@ void wallet_settings_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   selected_network = wallet_get_network();
   selected_account = wallet_get_account();
   selected_policy = wallet_get_policy();
-  settings_changed = false;
 
   // Get current mnemonic for later use
   if (!key_get_mnemonic(&mnemonic_content)) {
@@ -563,42 +341,6 @@ void wallet_settings_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_set_width(network_dropdown, LV_PCT(100));
   lv_obj_add_event_cb(network_dropdown, network_dropdown_cb,
                       LV_EVENT_VALUE_CHANGED, NULL);
-
-  // Account label
-  lv_obj_t *acc_label = lv_label_create(content);
-  lv_label_set_text(acc_label, "Account");
-  lv_obj_set_style_text_font(acc_label, theme_font_small(), 0);
-  lv_obj_set_style_text_color(acc_label, secondary_color(), 0);
-  lv_obj_set_style_margin_top(acc_label, pad, 0);
-
-  // Account button
-  account_btn = lv_btn_create(content);
-  lv_obj_set_size(account_btn, LV_PCT(50), theme_get_min_touch_size());
-  theme_apply_touch_button(account_btn, false);
-  lv_obj_add_event_cb(account_btn, account_btn_cb, LV_EVENT_CLICKED, NULL);
-
-  account_value_label = lv_label_create(account_btn);
-  char acc_buf[12];
-  snprintf(acc_buf, sizeof(acc_buf), "%u", selected_account);
-  lv_label_set_text(account_value_label, acc_buf);
-  lv_obj_set_style_text_font(account_value_label, theme_font_medium(), 0);
-  lv_obj_set_style_text_color(account_value_label, main_color(), 0);
-  lv_obj_center(account_value_label);
-
-  // Apply button
-  apply_btn = lv_btn_create(content);
-  lv_obj_set_size(apply_btn, LV_PCT(60), theme_get_min_touch_size());
-  lv_obj_set_style_margin_top(apply_btn, pad, 0);
-  theme_apply_touch_button(apply_btn, false);
-  lv_obj_add_event_cb(apply_btn, apply_btn_cb, LV_EVENT_CLICKED, NULL);
-  lv_obj_add_state(apply_btn, LV_STATE_DISABLED); // Disabled until changes made
-
-  apply_label = lv_label_create(apply_btn);
-  lv_label_set_text(apply_label, "Apply");
-  lv_obj_set_style_text_font(apply_label, theme_font_medium(), 0);
-  lv_obj_set_style_text_color(apply_label, disabled_color(),
-                              0); // Start disabled
-  lv_obj_center(apply_label);
 }
 
 void wallet_settings_page_show(void) {
@@ -612,9 +354,6 @@ void wallet_settings_page_hide(void) {
 }
 
 void wallet_settings_page_destroy(void) {
-  // Close account overlay if open
-  close_account_overlay();
-
   SECURE_FREE_STRING(stored_passphrase);
   SECURE_FREE_STRING(mnemonic_content);
 
@@ -627,15 +366,10 @@ void wallet_settings_page_destroy(void) {
   network_dropdown = NULL;
   passphrase_btn = NULL;
   descriptor_btn = NULL;
-  account_btn = NULL;
-  account_value_label = NULL;
-  apply_btn = NULL;
-  apply_label = NULL;
   title_cont = NULL;
   derivation_label = NULL;
   secure_memzero(base_fingerprint_hex, sizeof(base_fingerprint_hex));
   return_callback = NULL;
   selected_network = WALLET_NETWORK_MAINNET;
   selected_policy = WALLET_POLICY_SINGLESIG;
-  settings_changed = false;
 }
