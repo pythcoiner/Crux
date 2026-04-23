@@ -1,129 +1,83 @@
-# descriptor-rework test fixtures manifest
+# descriptor-rework test fixtures manifest.
 #
-# Consumed by:
-#   - scripts/gen-baseline-sim-data.py (reads `bootstrap:`)
-#   - scripts/gen-test-plan.py         (reads `fixtures:`)
+# Consumed ONE-TIME by scripts/gen-test-plan.py to produce the committed
+# .cm/spec/TESTING_PLAN.md. Testers don't run the generator; they just read
+# the markdown.
 #
-# The BIP39 test mnemonic's master fingerprint is `73c5da0a` (mainnet).
-# Derivation-reference values (xpubs, addresses) are not encoded here —
-# the tester pre-computes them with Sparrow or bitcoin-cli and the
-# generated TESTING_PLAN.md points at `test-fixtures/REFERENCES.md`
-# where they go.
+# Test mnemonic: the well-known BIP39 test vector
+#   "abandon abandon abandon abandon abandon abandon abandon abandon
+#    abandon abandon abandon about"
+# Mainnet master fingerprint: 73c5da0a
 
-# ---------------------------------------------------------------------------
-# Baseline sim_data pre-seed — writes:
-#   test-fixtures/baseline-sim-data/nvs/pin.nvs
-#   test-fixtures/baseline-sim-data/nvs/settings.nvs
-#   test-fixtures/baseline-sim-data/sdcard/kern/descriptors/*.txt
-# ---------------------------------------------------------------------------
-bootstrap:
-  pin: "1234"            # tester types this to unlock after each launch
-  split_pos: 2           # anti-phishing split position; pin[0:2] then pin[2:]
-
-  settings:
-    def_net: 0           # 0 = mainnet, 1 = testnet
-    bright: 80           # brightness 0..100
-    ae_tgt: 128          # camera auto-exposure target
-    focus: 400           # camera focus position
-    perm_sign: 0         # permissive signing default off
-
-  # Plaintext descriptors dropped into sim_data/sdcard/kern/descriptors/.
-  # registry_init scans these on boot, so §1's "3 entries loaded" depends
-  # on exactly 3 here.
-  #
-  # PLACEHOLDER xpubs — derive from the test mnemonic with Sparrow or
-  # bitcoin-cli and replace before first test run. See
-  # `test-fixtures/REFERENCES.md` for the expected shape.
-  baseline_descriptors:
-    - id: bl_bip84_acct0
-      str: "wpkh([73c5da0a/84'/0'/0']xpub6CUGRUonZSQ4TWtTMmzXdrXDtypWKiKrhko4egpiMZbpiaQL2jkwSB1icqYh2cfDfVxdx4df189oLKnC5fSwqPfgyP3hooxujYzAu3fDVmz/<0;1>/*)#<PLACEHOLDER-cksum>"
-    - id: bl_bip86_acct0
-      str: "tr([73c5da0a/86'/0'/0']xpub6BgBgsespWvERF3LHQu6CnqdvfEvtMcQjYrcRzx53QJjSxarj2afYWcLteoGVky7D3UXrnHkyQNssFrsf9jk17AYfMA1AzF3h4H9Tw1npCf/<0;1>/*)#<PLACEHOLDER-cksum>"
-    - id: bl_wsh_2of2
-      str: "wsh(sortedmulti(2,[73c5da0a/48'/0'/0'/2']xpub<PLACEHOLDER>/<0;1>/*,[<other-fp>/48'/0'/0'/2']xpub<PLACEHOLDER>/<0;1>/*))#<PLACEHOLDER-cksum>"
-
-# ---------------------------------------------------------------------------
-# Per-test QR fixtures
-#
-# Fields:
-#   label:     unique identifier used in <!-- QR:label --> markers in the
-#              TESTING_PLAN template.
-#   type:      one of: plain | compact_seedqr | seedqr | psbt
-#   payload:   raw text for `type: plain`
-#   entropy_hex: for compact_seedqr (16 or 32 bytes hex) or seedqr
-#   words:     for seedqr (space-separated BIP39 words)
-#   from_file: path to raw binary PSBT, relative to repo root
-#   encoding:  for type: psbt — base64 | binary | bbqr (default: auto)
-#   note:      free-text reminder of what the fixture tests
-# ---------------------------------------------------------------------------
 fixtures:
 
-  # --- Mnemonic ---
+  # --- Mnemonic (scanned during §1 bootstrap) ---
 
   - label: mnemonic_boot
     type: compact_seedqr
-    # BIP39 test-vector entropy for "abandon ... about" (12 words, 128 bits)
+    # 128-bit entropy: all zeros => the "abandon ... about" vector
     entropy_hex: "00000000000000000000000000000000"
-    note: Loaded at every simulator launch. Compact-SeedQR — tiny single QR.
+    note: BIP39 test vector; Compact SeedQR = 16 bytes.
 
-  # --- Descriptor registration (WARN dialog tests) ---
+  # --- Multisig descriptor (loaded in §5 so §6-§8 can use it) ---
+  # Our xpub: m/48'/0'/0'/2' of the test mnemonic.
+  # Cosigner xpub: fixed dummy (replace the `xpubCOSIGNER` literal with a
+  # real xpub of your choice before first regeneration — the PSBT_E fixture
+  # must be crafted for THIS exact descriptor).
 
-  - label: desc_wpkh_ok
+  - label: desc_wsh_2of2
     type: plain
-    payload: "wpkh([73c5da0a/84'/0'/0']xpub6CUGRUonZSQ4TWtTMmzXdrXDtypWKiKrhko4egpiMZbpiaQL2jkwSB1icqYh2cfDfVxdx4df189oLKnC5fSwqPfgyP3hooxujYzAu3fDVmz/<0;1>/*)#<cksum>"
-    note: Purpose 84 under wpkh — no WARN.
+    payload: "wsh(sortedmulti(2,[73c5da0a/48'/0'/0'/2']xpubOURS,[deadbeef/48'/0'/0'/2']xpubCOSIGNER))#<cksum>"
+    note: Multisig; no WARN expected (purpose 48 under wsh is the standard convention).
+
+  # --- Descriptor registration WARN-dialog fixtures (§9) ---
 
   - label: desc_wpkh_custom_purpose99
     type: plain
-    payload: "wpkh([73c5da0a/99'/0'/0']xpub<PLACEHOLDER>/<0;1>/*)#<cksum>"
-    note: Purpose 99 under wpkh — NA (no WARN, purpose not in standard table).
+    payload: "wpkh([73c5da0a/99'/0'/0']xpubCUSTOM99/<0;1>/*)#<cksum>"
+    note: Purpose 99 — NA (no WARN; purpose outside standard table).
 
   - label: desc_tr_mismatch_purpose84
     type: plain
-    payload: "tr([73c5da0a/84'/0'/0']xpub<PLACEHOLDER>/<0;1>/*)#<cksum>"
+    payload: "tr([73c5da0a/84'/0'/0']xpubTR84/<0;1>/*)#<cksum>"
     note: Purpose 84 under tr — WARN expected.
 
   - label: desc_wsh_mismatch_purpose86
     type: plain
-    payload: "wsh(sortedmulti(2,[73c5da0a/86'/0'/0']xpub<PLACEHOLDER>,[other-fp/86'/0'/0']xpub<PLACEHOLDER>))#<cksum>"
+    payload: "wsh(sortedmulti(2,[73c5da0a/86'/0'/0']xpubWSH86A,[deadbeef/86'/0'/0']xpubWSH86B))#<cksum>"
     note: Purpose 86 under wsh — WARN expected.
 
-  - label: desc_wsh_ok_purpose48
-    type: plain
-    payload: "wsh(sortedmulti(2,[73c5da0a/48'/0'/0'/2']xpub<PLACEHOLDER>,[other-fp/48'/0'/0'/2']xpub<PLACEHOLDER>))#<cksum>"
-    note: Purpose 48 under wsh — OK (no WARN).
-
-  # --- PSBT signing (behavioural spec) ---
+  # --- PSBT signing fixtures (§4 + §6) ---
 
   - label: psbt_A_bip84_acct3
     type: psbt
     encoding: base64
     from_file: test-fixtures/raw/psbt_A_bip84_acct3.bin
-    note: Input m/84'/0'/3'/0/12 → sign (acct 3, not 0).
+    note: Input m/84'/0'/3'/0/12 — sign (account 3, not 0).
 
   - label: psbt_B_bip86
     type: psbt
     encoding: base64
     from_file: test-fixtures/raw/psbt_B_bip86.bin
-    note: Input m/86'/0'/0'/1/4 → sign (taproot).
+    note: Input m/86'/0'/0'/1/4 — sign (taproot).
 
   - label: psbt_C_bip44_acct100
     type: psbt
     encoding: base64
     from_file: test-fixtures/raw/psbt_C_bip44_acct100.bin
-    note: Input m/44'/0'/100'/0/0 → refuse (account ≥ 100).
+    note: Input m/44'/0'/100'/0/0 — refuse (account ≥ 100).
 
   - label: psbt_D_bip84_idx100
     type: psbt
     encoding: base64
     from_file: test-fixtures/raw/psbt_D_bip84_idx100.bin
-    note: Input m/84'/0'/0'/0/100 → refuse (index ≥ 100).
+    note: Input m/84'/0'/0'/0/100 — refuse (index ≥ 100).
 
   - label: psbt_E_wsh_multisig
     type: psbt
     encoding: bbqr
     from_file: test-fixtures/raw/psbt_E_wsh_multisig.bin
-    note: Registered wsh(sortedmulti,2,...) → sign via registry. Multi-frame.
+    note: Needs desc_wsh_2of2 registered first (§5).
 
   - label: psbt_F_nonstandard_purpose
     type: psbt
@@ -135,33 +89,33 @@ fixtures:
     type: psbt
     encoding: base64
     from_file: test-fixtures/raw/psbt_G_attacker_swapped_utxo.bin
-    note: Correct keypath but UTXO script swapped → refuse silently.
+    note: Correct keypath but swapped UTXO script — refuse silently.
 
   - label: psbt_H_output_classification
     type: psbt
     encoding: base64
     from_file: test-fixtures/raw/psbt_H_output_classification.bin
-    note: Owned output m/84'/0'/0'/1/3 + external output. Review screen classification test.
+    note: Owned output m/84'/0'/0'/1/3 + external output — classification test.
 
   - label: psbt_I_fp_only
     type: psbt
     encoding: base64
     from_file: test-fixtures/raw/psbt_I_fp_only.bin
-    note: Output keypath has our fingerprint but non-matching path (m/1234'/0'/0'/0/0). Must NOT be marked owned.
+    note: Output keypath has our fingerprint but non-matching path — must NOT be marked owned.
 
-  # --- Address checker ---
+  # --- Address-checker fixtures (§8) ---
 
   - label: addr_bip84_acct2_idx5
     type: plain
-    payload: "bc1q<PLACEHOLDER-address-at-m/84'/0'/2'/0/5>"
-    note: Expect address_checker to report 'Receive #5'.
+    payload: "bc1ql774upt5yseuqhaffxlgvxuyr2xlps8v87f2ts"
+    note: Native SegWit, m/84'/0'/2'/0/5 of the test mnemonic.
 
   - label: addr_random_not_ours
     type: plain
     payload: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
-    note: Arbitrary mainnet address unrelated to our mnemonic — expect 'Not found'.
+    note: Arbitrary mainnet address unrelated to our mnemonic.
 
   - label: addr_registered_multisig
     type: plain
-    payload: "bc1q<PLACEHOLDER-wsh-multisig-address-at-0/0>"
-    note: Must be findable under the wsh multisig registered source.
+    payload: "bc1q<REPLACE-WITH-wsh-2of2-ADDRESS-AT-0/0>"
+    note: Derived from desc_wsh_2of2 at multi_index=0, child=0.

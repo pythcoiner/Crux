@@ -24,6 +24,7 @@ def render(
     *,
     error_correction: int = ERROR_CORRECT_M,
     border: int = 2,
+    dark_theme: bool = False,
 ) -> str:
     """Return the QR rendered as half-block ASCII text (no trailing newline).
 
@@ -31,6 +32,18 @@ def render(
     if the payload exceeds version 40 capacity the library raises
     `qrcode.exceptions.DataOverflowError`, which we wrap in `QrTooLargeError`
     with a size hint.
+
+    Polarity:
+    - `dark_theme=False` (default, for light-theme editors): dark QR modules
+      map to `█` so they render as dark pixels on a white background —
+      standard QR orientation for the camera.
+    - `dark_theme=True` (for dark-theme editors): polarity inverted so `█`
+      renders as light pixels on a dark background, and the blanks become
+      the dark "modules" the QR expects around its finder patterns. Still a
+      valid standard-orientation QR from the camera's point of view.
+
+    Without this flag set correctly, the quiet zone around the QR ends up
+    the wrong polarity and zbar/zxing often fail to lock on.
     """
     q = qrcode.QRCode(
         version=None,
@@ -52,16 +65,11 @@ def render(
         ) from exc
 
     buf = io.StringIO()
-    # Non-inverted rendering: dark QR modules map to `█` (both halves filled)
-    # and light modules to `\xa0` (blank). On a light-theme editor the text
-    # foreground is black, so `█` renders as dark and `\xa0` (space) renders
-    # as light — i.e. the QR appears in its standard orientation.
-    #
-    # On a dark-theme editor the polarity is reversed. Most webcam QR
-    # scanners (zbar, zxing) handle both polarities, so either works in
-    # practice — but light theme is the safer default. The test plan's
-    # section 0 tells the tester which.
-    q.print_ascii(out=buf, tty=False, invert=False)
+    # `invert` in qrcode's print_ascii swaps which of (\xa0, ▀, ▄, █) is used
+    # for (light/light, dark/light, light/dark, dark/dark). For a dark-theme
+    # editor we want the "dark half" to be the BACKGROUND (i.e. rendered as
+    # the editor's light foreground char), which corresponds to invert=True.
+    q.print_ascii(out=buf, tty=False, invert=dark_theme)
     # Swap non-breaking spaces for regular ones so text editors render
     # them as plain whitespace (no special glyph, no line-break quirks).
     text = buf.getvalue().replace("\xa0", " ")

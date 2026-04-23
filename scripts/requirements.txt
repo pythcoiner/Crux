@@ -1,2 +1,9 @@
 qrcode>=7.4
 pyyaml>=6.0
+
+# Dev-only — needed by:
+#   scripts/gen-test-psbts.py        (PSBT serialization + key derivation)
+#   recomputing hardcoded reference addresses
+# gen-qr.py itself does not import these.
+embit>=0.7
+bip-utils>=2.7
