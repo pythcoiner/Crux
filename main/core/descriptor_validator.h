@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "storage.h"
+
 typedef enum {
   VALIDATION_SUCCESS = 0,
   VALIDATION_FINGERPRINT_NOT_FOUND,
@@ -12,6 +14,10 @@ typedef enum {
   VALIDATION_XPUB_MISMATCH,
   VALIDATION_PARSE_ERROR,
   VALIDATION_INTERNAL_ERROR,
+  /* Same descriptor (BIP-380 checksum match) is already persisted on
+   * disk. The validator already showed a dialog naming the existing
+   * entry — see descriptor_loader_show_error. */
+  VALIDATION_DUPLICATE,
 } descriptor_validation_result_t;
 
 typedef void (*validation_complete_cb)(descriptor_validation_result_t result,
@@ -41,6 +47,13 @@ typedef void (*validation_info_confirm_cb)(const descriptor_info_t *info,
                                            void (*proceed)(bool confirmed,
                                                            void *user_data));
 
+// Called after info-confirm to collect the registry ID and storage location.
+// Implementation shows a text-input prompt, then calls proceed(id, loc, NULL).
+typedef void (*validation_id_loc_cb)(void (*proceed)(const char *id,
+                                                     storage_location_t loc,
+                                                     void *user_data),
+                                     void *user_data);
+
 // Validate descriptor against wallet key and load if valid.
 // Checks fingerprint, derivation path attributes, and xpub match.
 // If settings mismatch, uses confirm_cb to prompt (NULL = auto-decline).
@@ -51,6 +64,7 @@ void descriptor_validate_and_load(const char *descriptor_str,
                                   validation_complete_cb callback,
                                   validation_confirm_cb confirm_cb,
                                   validation_info_confirm_cb info_confirm_cb,
+                                  validation_id_loc_cb id_loc_cb,
                                   void *user_data);
 
 #endif // DESCRIPTOR_VALIDATOR_H

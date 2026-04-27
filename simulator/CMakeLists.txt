@@ -137,6 +137,9 @@ set(APP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../main/core/key.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../main/core/message_sign.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../main/core/psbt.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../main/core/ss_whitelist.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../main/core/registry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../main/core/descriptor_checksum.c
     # miniz (used by kef.c for raw-deflate compression)
     ${CMAKE_CURRENT_SOURCE_DIR}/../components/bbqr/src/miniz.c
     # bbqr (multi-part QR encoding)
@@ -155,6 +158,7 @@ set(APP_UI_SOURCES
     ${APP_UI_DIR}/battery.c
     ${APP_UI_DIR}/key_info.c
     ${APP_UI_DIR}/sankey.c
+    ${APP_UI_DIR}/settings_row.c
 )
 
 # --- PIN pages ---
@@ -212,6 +216,7 @@ set(APP_PAGE_SOURCES
     # Settings
     ${APP_PAGES_DIR}/settings/descriptor_manager.c
     ${APP_PAGES_DIR}/settings/wallet_settings.c
+    ${APP_PAGES_DIR}/settings/registered_descriptors.c
     # Shared pages
     ${APP_PAGES_DIR}/shared/address_checker.c
     ${APP_PAGES_DIR}/shared/descriptor_loader.c
